@@ -309,6 +309,127 @@ func main() {
 		}
 	}
 
+	log.Println("🌟 Seeding Dedicated Tester Accounts: Maria Koskinen, Aino Virtanen, Mikko Korhonen...")
+
+	// 1. Insert Maria Koskinen (106)
+	_, err = tx.Exec(`
+		INSERT INTO users (id, email, password_hash, owner_name, username, date_of_birth)
+		VALUES (106, 'maria_k2026@pawly.fi', $1, 'Maria Koskinen', 'maria_k2026', '1995-06-15')
+		ON CONFLICT (id) DO UPDATE SET 
+			email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, 
+			owner_name = EXCLUDED.owner_name, username = EXCLUDED.username, date_of_birth = EXCLUDED.date_of_birth;
+
+		INSERT INTO user_profiles (user_id, owner_name, owner_photo, about_me, location, interests, date_of_birth)
+		VALUES (106, 'Maria Koskinen', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80', 'Hi! I am Maria, living in Töölö with Bella. We love weekend agility training and discovering new dog parks across Helsinki.', 'Helsinki (Töölö)', ARRAY['Dog Walking', 'Agility Training', 'Outdoor Hiking', 'Park Hangouts'], '1995-06-15')
+		ON CONFLICT (user_id) DO UPDATE SET
+			owner_name = EXCLUDED.owner_name, owner_photo = EXCLUDED.owner_photo,
+			about_me = EXCLUDED.about_me, location = EXCLUDED.location,
+			interests = EXCLUDED.interests, date_of_birth = EXCLUDED.date_of_birth;
+
+		INSERT INTO pets (id, owner_id, pet_name, animal_type, breed, size, about_me, pet_photo, photos, energy_level, pet_age, temperament, latitude, longitude)
+		VALUES (106, 106, 'Bella', 'dog', 'Golden Retriever', 'large', 'Always ready for swimming, fetch games, and puppy playdates!', 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=500&auto=format&fit=crop&q=80', ARRAY['https://images.unsplash.com/photo-1552053831-71594a27632d?w=500&auto=format&fit=crop&q=80'], 'high', 2, ARRAY['Playful', 'Friendly', 'Energetic'], 60.1812, 24.9220)
+		ON CONFLICT (id) DO UPDATE SET
+			pet_name = EXCLUDED.pet_name, animal_type = EXCLUDED.animal_type, breed = EXCLUDED.breed,
+			size = EXCLUDED.size, about_me = EXCLUDED.about_me, pet_photo = EXCLUDED.pet_photo,
+			photos = EXCLUDED.photos, energy_level = EXCLUDED.energy_level, pet_age = EXCLUDED.pet_age,
+			temperament = EXCLUDED.temperament, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
+	`, passStr)
+	if err != nil {
+		log.Fatalf("❌ Failed seeding Maria: %v", err)
+	}
+
+	// 2. Insert Aino Virtanen (110)
+	_, err = tx.Exec(`
+		INSERT INTO users (id, email, password_hash, owner_name, username, date_of_birth)
+		VALUES (110, 'aino@pawly.fi', $1, 'Aino Virtanen', 'aino_v', '1998-04-12')
+		ON CONFLICT (id) DO UPDATE SET 
+			email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, 
+			owner_name = EXCLUDED.owner_name, username = EXCLUDED.username, date_of_birth = EXCLUDED.date_of_birth;
+
+		INSERT INTO user_profiles (user_id, owner_name, owner_photo, about_me, location, interests, date_of_birth)
+		VALUES (110, 'Aino Virtanen', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80', 'Architect living in Kallio. Milo is my chill companion on daily cafe walks and photography strolls.', 'Helsinki (Kallio)', ARRAY['Park Hangouts', 'Pet Photography', 'Pet Cafes', 'Camping'], '1998-04-12')
+		ON CONFLICT (user_id) DO UPDATE SET
+			owner_name = EXCLUDED.owner_name, owner_photo = EXCLUDED.owner_photo,
+			about_me = EXCLUDED.about_me, location = EXCLUDED.location,
+			interests = EXCLUDED.interests, date_of_birth = EXCLUDED.date_of_birth;
+
+		INSERT INTO pets (id, owner_id, pet_name, animal_type, breed, size, about_me, pet_photo, photos, energy_level, pet_age, temperament, latitude, longitude)
+		VALUES (110, 110, 'Milo', 'dog', 'French Bulldog', 'small', 'Low energy snuggler who enjoys short park walks and sunbathing.', 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=500&auto=format&fit=crop&q=80', ARRAY['https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=500&auto=format&fit=crop&q=80'], 'low', 3, ARRAY['Calm', 'Gentle', 'Couch Potato'], 60.1873, 24.9535)
+		ON CONFLICT (id) DO UPDATE SET
+			pet_name = EXCLUDED.pet_name, animal_type = EXCLUDED.animal_type, breed = EXCLUDED.breed,
+			size = EXCLUDED.size, about_me = EXCLUDED.about_me, pet_photo = EXCLUDED.pet_photo,
+			photos = EXCLUDED.photos, energy_level = EXCLUDED.energy_level, pet_age = EXCLUDED.pet_age,
+			temperament = EXCLUDED.temperament, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
+	`, passStr)
+	if err != nil {
+		log.Fatalf("❌ Failed seeding Aino: %v", err)
+	}
+
+	// 3. Insert Mikko Korhonen (111)
+	_, err = tx.Exec(`
+		INSERT INTO users (id, email, password_hash, owner_name, username, date_of_birth)
+		VALUES (111, 'mikko@pawly.fi', $1, 'Mikko Korhonen', 'mikko_k', '1991-09-20')
+		ON CONFLICT (id) DO UPDATE SET 
+			email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, 
+			owner_name = EXCLUDED.owner_name, username = EXCLUDED.username, date_of_birth = EXCLUDED.date_of_birth;
+
+		INSERT INTO user_profiles (user_id, owner_name, owner_photo, about_me, location, interests, date_of_birth)
+		VALUES (111, 'Mikko Korhonen', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80', 'Software engineer in Tapiola. Luna and I are big fans of coastal trails, frisbee sessions, and trick training.', 'Espoo (Tapiola)', ARRAY['Beach Walks', 'Puppy Socialization', 'Outdoor Hiking', 'Trick Training'], '1991-09-20')
+		ON CONFLICT (user_id) DO UPDATE SET
+			owner_name = EXCLUDED.owner_name, owner_photo = EXCLUDED.owner_photo,
+			about_me = EXCLUDED.about_me, location = EXCLUDED.location,
+			interests = EXCLUDED.interests, date_of_birth = EXCLUDED.date_of_birth;
+
+		INSERT INTO pets (id, owner_id, pet_name, animal_type, breed, size, about_me, pet_photo, photos, energy_level, pet_age, temperament, latitude, longitude)
+		VALUES (111, 111, 'Luna', 'dog', 'Border Collie', 'medium', 'Super energetic agility star! Loves Frisbee and mental challenge games.', 'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=500&auto=format&fit=crop&q=80', ARRAY['https://images.unsplash.com/photo-1517849845537-4d257902454a?w=500&auto=format&fit=crop&q=80'], 'high', 4, ARRAY['Energetic', 'Intelligent', 'Playful'], 60.1770, 24.8055)
+		ON CONFLICT (id) DO UPDATE SET
+			pet_name = EXCLUDED.pet_name, animal_type = EXCLUDED.animal_type, breed = EXCLUDED.breed,
+			size = EXCLUDED.size, about_me = EXCLUDED.about_me, pet_photo = EXCLUDED.pet_photo,
+			photos = EXCLUDED.photos, energy_level = EXCLUDED.energy_level, pet_age = EXCLUDED.pet_age,
+			temperament = EXCLUDED.temperament, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
+	`, passStr)
+	if err != nil {
+		log.Fatalf("❌ Failed seeding Mikko: %v", err)
+	}
+
+	// 4. Inter-user Connections between Maria (106), Aino (110), Mikko (111)
+	_, _ = tx.Exec(`
+		INSERT INTO connections (id, pet1_id, pet2_id)
+		VALUES 
+		(101, 106, 110),
+		(102, 106, 111),
+		(103, 110, 111)
+		ON CONFLICT (id) DO NOTHING;
+
+		INSERT INTO chats (id, connection_id)
+		VALUES 
+		(101, 101),
+		(102, 102),
+		(103, 103)
+		ON CONFLICT (id) DO NOTHING;
+
+		INSERT INTO messages (chat_id, sender_user_id, body, created_at, read_at) VALUES
+		(101, 106, 'Moi Aino! Bella would love to meet Milo at the Töölönlahti park sometime this week.', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '5 minutes'),
+		(101, 110, 'Moi Maria! That sounds super nice. Milo is usually most active in the early evening around 18:00.', NOW() - INTERVAL '2 days' + INTERVAL '1 hour', NOW() - INTERVAL '2 days' + INTERVAL '1 hour' + INTERVAL '2 minutes'),
+		(101, 106, 'Thursday at 18:00 works perfectly for us! See you near the amphitheatre grass area 🐾', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day' + INTERVAL '10 minutes'),
+		(101, 110, 'Great! We will be there. Bringing some treats too!', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '4 hours'),
+
+		(102, 111, 'Hei Maria! Saw Bella loves agility. Luna and I go to the agility park near Rajasaari often!', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days' + INTERVAL '15 minutes'),
+		(102, 106, 'Hei Mikko! Yes, Bella is obsessed with tunnel runs and hurdles. How fast is Luna on the weave poles?', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '20 minutes'),
+		(102, 111, 'Haha, she is lightning fast! We should set up a joint practice run this weekend if weather permits.', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day' + INTERVAL '30 minutes'),
+		(102, 106, 'Sunday morning would be awesome! Let us check the forecast closer to Saturday.', NOW() - INTERVAL '3 hours', NULL),
+
+		(103, 110, 'Moi Mikko, is Luna good with smaller calm dogs like frenchies?', NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days' + INTERVAL '1 hour'),
+		(103, 111, 'Moi Aino! Yes absolutely, Luna is very gentle when playing with smaller buddies. She just matches their tempo.', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days' + INTERVAL '45 minutes'),
+		(103, 110, 'Awesome, Milo is super chill and loves just walking alongside other dogs without excessive jumping.', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day' + INTERVAL '10 minutes');
+
+		SELECT setval('users_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM users), 1), 112));
+		SELECT setval('pets_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM pets), 1), 112));
+		SELECT setval('connections_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM connections), 1), 104));
+		SELECT setval('chats_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM chats), 1), 104));
+		SELECT setval('messages_id_seq', COALESCE((SELECT MAX(id) FROM messages), 1));
+	`)
+
 	if err := tx.Commit(); err != nil {
 		log.Fatalf("❌ Transaction commit failed: %v", err)
 	}
