@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
     email         VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     owner_name    VARCHAR(255) NOT NULL DEFAULT '',
+    username      VARCHAR(100) NOT NULL DEFAULT '',
+    date_of_birth VARCHAR(50) DEFAULT '',
     created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -17,13 +19,14 @@ CREATE TABLE IF NOT EXISTS users (
 -- USER PROFILES (one per user)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_profiles (
-    user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    owner_name VARCHAR(255) NOT NULL DEFAULT '',
-    owner_photo VARCHAR(500) DEFAULT '',
-    about_me   TEXT DEFAULT '',
-    location   VARCHAR(255) DEFAULT '',
-    interests  TEXT[] DEFAULT '{}',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    user_id       INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    owner_name    VARCHAR(255) NOT NULL DEFAULT '',
+    owner_photo   VARCHAR(500) DEFAULT '',
+    about_me      TEXT DEFAULT '',
+    location      VARCHAR(255) DEFAULT '',
+    interests     TEXT[] DEFAULT '{}',
+    date_of_birth VARCHAR(50) DEFAULT '',
+    updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- ============================================================
@@ -118,5 +121,3 @@ CREATE INDEX IF NOT EXISTS idx_pets_owner_id ON pets(owner_id);
 CREATE INDEX IF NOT EXISTS idx_pets_animal_type ON pets(animal_type);
 CREATE INDEX IF NOT EXISTS idx_connection_requests_receiver ON connection_requests(receiver_pet_id);
 CREATE INDEX IF NOT EXISTS idx_connection_requests_sender ON connection_requests(sender_pet_id);
-CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id);
-CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
