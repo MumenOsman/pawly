@@ -1,0 +1,303 @@
+/* ============================================================
+   PAWLY DESIGN SYSTEM — Global Tokens & Base Styles
+   
+   This file is the SINGLE SOURCE OF TRUTH for all visual tokens.
+   All components import these via CSS custom properties.
+   To change a brand color, edit ONE line here.
+   
+   Reference: /UI UX/Match me UI.md
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sora:wght@400;600;700&display=swap');
+
+/* ============================================================
+   HIDE SCROLLBARS VISUALLY (Retain smooth scrolling)
+   ============================================================ */
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* ============================================================
+   COLOR TOKENS — Light Mode (Default)
+   ============================================================ */
+:root {
+  /* --- Core Palette --- */
+  --color-primary: #0D5C4D;          /* Forest Evergreen — headers, trust badges, active tabs */
+  --color-primary-hover: #0A4D40;    /* Darker for hover states */
+  --color-primary-light: #E8F5F1;    /* Tinted background for subtle highlights */
+  --color-accent: #FF7A42;           /* Playful Amber — CTAs, notifications, match % */
+  --color-accent-hover: #E8693A;     /* Darker for hover states */
+  --color-accent-light: #FFF3ED;     /* Tinted background for notifications */
+  --color-bg: #F6F8F7;              /* Nordic Mist — main background */
+  --color-surface: #FFFFFF;          /* Card White — cards, modals, drawers */
+  --color-text: #0F172A;            /* Midnight Ink — primary text */
+  --color-text-muted: #64748B;       /* Slate Gray — secondary text, timestamps */
+  --color-border: #E2E8F0;          /* Light border for cards and dividers */
+
+  /* --- Species & Feature Accents --- */
+  --color-cat: #818CF8;             /* Cat Lavender — indoor cat badges */
+  --color-dog: #10B981;             /* Dog Pine Green — outdoor dog badges */
+  --color-small-pet: #2DD4BF;       /* Small Pet Mint — rabbit, guinea pig badges */
+  --color-warning: #F59E0B;         /* Warning Amber — caution alerts */
+  --color-verified: #059669;        /* Verified Emerald — vaccination/verification */
+  --color-danger: #EF4444;          /* Danger Red — delete, disconnect, errors */
+  --color-danger-hover: #DC2626;
+  --color-danger-light: #FEF2F2;
+
+  /* --- Match Ring Gradient --- */
+  --color-match-start: #FF7A42;     /* Amber end of ring */
+  --color-match-end: #10B981;       /* Green end of ring */
+
+  /* --- Online/Offline --- */
+  --color-online: #22C55E;
+  --color-offline: #94A3B8;
+
+  /* --- Typography --- */
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Sora', 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* Type Scale */
+  --text-display: 2rem;       /* 32px — Match screens, onboarding headlines */
+  --text-h1: 1.5rem;          /* 24px — Section titles, pet names */
+  --text-h2: 1.125rem;        /* 18px — Card headers, modal titles */
+  --text-body: 0.9375rem;     /* 15px — Bio, chat messages */
+  --text-small: 0.8125rem;    /* 13px — Distance tags, location chips */
+  --text-caption: 0.6875rem;  /* 11px — Status tags, badges (ALL-CAPS) */
+
+  /* Line Heights */
+  --leading-display: 1.1875;  /* 38px at 32px */
+  --leading-h1: 1.25;         /* 30px at 24px */
+  --leading-h2: 1.333;        /* 24px at 18px */
+  --leading-body: 1.467;      /* 22px at 15px */
+  --leading-small: 1.385;     /* 18px at 13px */
+  --leading-caption: 1.273;   /* 14px at 11px */
+
+  /* Font Weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Spacing Scale --- */
+  --space-xs: 0.25rem;   /* 4px */
+  --space-sm: 0.5rem;    /* 8px */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+  --space-3xl: 4rem;     /* 64px */
+
+  /* --- Border Radii --- */
+  --radius-pill: 9999px;  /* Buttons & pill chips */
+  --radius-card: 20px;    /* Pet cards & bottom drawers */
+  --radius-badge: 8px;    /* Tags & badges */
+  --radius-input: 12px;   /* Form inputs */
+  --radius-sm: 6px;       /* Small elements */
+
+  /* --- Shadows --- */
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  /* --- Transitions --- */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* --- Touch Targets (Nordic glove-friendly) --- */
+  --touch-min: 48px;
+
+  /* --- Layout --- */
+  --navbar-height: 64px;
+  --sidebar-width: 280px;
+  --content-max-width: 1200px;
+  --chat-input-height: 64px;
+}
+
+/* Dark mode has been removed from the app */
+
+
+/* ============================================================
+   CSS RESET & BASE STYLES
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-body);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  min-height: 100vh;
+  transition: background-color var(--transition-normal),
+              color var(--transition-normal);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   TYPOGRAPHY — Base Elements
+   ============================================================ */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: var(--text-h1);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-h1);
+}
+
+h2 {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-h2);
+}
+
+p {
+  margin: 0;
+  line-height: var(--leading-body);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: inherit;
+}
+
+input, textarea, select {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  padding: var(--space-sm) var(--space-md);
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+  outline: none;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Text truncation */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Flex helpers */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+
+/* ============================================================
+   SCROLLBAR STYLING
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ============================================================
+   LEAFLET MAP OVERRIDES
+   ============================================================ */
+.leaflet-container {
+  font-family: var(--font-body) !important;
+  border-radius: var(--radius-card);
+}
+
+/* ============================================================
+   RESPONSIVE BREAKPOINTS (reference — use in component CSS)
+   
+   Mobile:  < 640px
+   Tablet:  640px – 1023px
+   Desktop: >= 1024px
+   Wide:    >= 1440px
+   ============================================================ */

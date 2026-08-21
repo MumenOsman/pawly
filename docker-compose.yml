@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # ============================================================
+  # 1. PostgreSQL Database Service
+  # ============================================================
+  db:
+    image: postgres:15-alpine
+    container_name: pawly-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: pawly
+    ports:
+      - "5432:5432"
+    volumes:
+      - pawly-pgdata:/var/lib/postgresql/data
+      - ./backend/sql/schema/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pawly"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pawly-network
+
+  # ============================================================
+  # 2. Go API & WebSocket Backend Service
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pawly-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "3000"
+      JWT_SECRET: "pawly-production-jwt-secret-key"
+      DATABASE_URL: "postgres://postgres:dev@db:5432/pawly?sslmode=disable"
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "dev"
+      DB_NAME: "pawly"
+      DB_SSLMODE: "disable"
+    ports:
+      - "3000:3000"
+    volumes:
+      - pawly-uploads:/app/uploads
+    networks:
+      - pawly-network
+
+  # ============================================================
+  # 3. React Vite + Nginx Frontend Service
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pawly-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "5173:80"
+    networks:
+      - pawly-network
+
+networks:
+  pawly-network:
+    driver: bridge
+
+volumes:
+  pawly-pgdata:
+  pawly-uploads:

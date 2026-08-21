@@ -1,0 +1,123 @@
+/* ============================================================
+   TERMS AND CONDITIONS PAGE STYLES
+   ============================================================ */
+
+.terms-page {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.terms-page__content {
+  flex: 1;
+  padding: 3rem 1.5rem 5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.terms-page__container {
+  width: 100%;
+  max-width: 780px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 3rem 2.5rem;
+  box-sizing: border-box;
+}
+
+.terms-page__header {
+  margin-bottom: 2.25rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 1.5rem;
+}
+
+.terms-page__back-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color var(--transition-fast);
+}
+
+.terms-page__back-btn:hover {
+  color: #083b31;
+  text-decoration: underline;
+}
+
+.terms-page__header h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.terms-page__subtitle {
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+}
+
+.terms-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.terms-section h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 0.75rem;
+}
+
+.terms-section p {
+  font-size: var(--text-body);
+  color: #334155;
+  line-height: 1.65;
+  margin: 0 0 0.75rem;
+}
+
+.terms-section ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.terms-section li {
+  font-size: var(--text-body);
+  color: #334155;
+  line-height: 1.6;
+}
+
+.terms-section li strong {
+  color: var(--color-text);
+}
+
+.terms-page__footer {
+  margin-top: 3rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .terms-page__container {
+    padding: 2rem 1.25rem;
+  }
+  .terms-page__header h1 {
+    font-size: 1.6rem;
+  }
+}

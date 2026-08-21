@@ -1,0 +1,11 @@
+.git
+.gitignore
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+api.exe
+uploads/
+.vscode
+.idea

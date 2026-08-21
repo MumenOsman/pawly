@@ -1,0 +1,61 @@
+﻿.add-pet-form {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  padding: var(--space-xl);
+
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.add-pet-form h1 {
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
+
+.add-pet-form label {
+  margin-top: var(--space-sm);
+
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+.add-pet-form input,
+.add-pet-form select,
+.add-pet-form textarea {
+  width: 100%;
+}
+
+.add-pet-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.add-pet-location {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.add-pet-location p {
+  font-size: var(--text-small);
+  color: var(--color-verified);
+}
+
+.add-pet-location-error {
+  color: var(--color-danger) !important;
+}
+
+.add-pet-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-lg);
+}

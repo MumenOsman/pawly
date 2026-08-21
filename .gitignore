@@ -1,0 +1,25 @@
+# Executables & Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+backend/api.exe
+
+# Environment & Secrets
+.env
+*.env
+*.pem
+*.key
+
+# Dependencies & Builds
+node_modules/
+dist/
+build/
+backend/uploads/
+
+# IDE & OS Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

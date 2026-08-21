@@ -1,0 +1,54 @@
+/* ============================================================
+   MATCH RING STYLES
+   ============================================================ */
+
+.match-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.match-ring__svg {
+  display: block;
+}
+
+.match-ring__track {
+  opacity: 0.3;
+}
+
+.match-ring__progress {
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.match-ring__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+/* Size: small (for cards) */
+.match-ring--sm {
+  width: 44px;
+  height: 44px;
+}
+
+.match-ring--sm .match-ring__label {
+  font-size: var(--text-caption);
+}
+
+/* Size: large (for profile view) */
+.match-ring--lg {
+  width: 80px;
+  height: 80px;
+}
+
+.match-ring--lg .match-ring__label {
+  font-size: var(--text-body);
+}

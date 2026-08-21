@@ -1,0 +1,250 @@
+/* ============================================================
+   PET PROFILE PAGE STYLES
+   ============================================================ */
+
+.pet-profile {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.pet-profile__content {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+.pet-profile__layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+}
+
+.pet-profile__map-wrapper {
+  position: sticky;
+  top: calc(var(--navbar-height) + var(--space-lg));
+  height: calc(100vh - var(--navbar-height) - var(--space-lg) * 3);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.pet-profile__map {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .pet-profile__layout {
+    grid-template-columns: 1fr;
+  }
+  .pet-profile__map-wrapper {
+    height: 300px;
+    position: relative;
+    top: 0;
+  }
+}
+
+.pet-profile__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-accent);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  margin-bottom: var(--space-md);
+  padding: var(--space-xs) 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  transition: opacity var(--transition-fast);
+}
+
+.pet-profile__back:hover {
+  opacity: 0.8;
+}
+
+/* --- Hero Photo --- */
+.pet-profile__hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-lg);
+}
+
+.pet-profile__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pet-profile__match {
+  position: absolute;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  background: var(--color-surface);
+  border-radius: 50%;
+  padding: 4px;
+  box-shadow: var(--shadow-elevated);
+}
+
+/* --- Header --- */
+.pet-profile__header {
+  margin-bottom: var(--space-lg);
+}
+
+.pet-profile__name {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--space-sm);
+}
+
+.pet-profile__owner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.pet-profile__owner-photo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-bg);
+}
+
+.pet-profile__owner-name {
+  font-size: var(--text-body);
+  color: var(--color-text-muted);
+}
+
+/* --- Details Grid --- */
+.pet-profile__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-lg);
+}
+
+.pet-profile__detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.pet-profile__detail-label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.pet-profile__detail-value {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  text-transform: capitalize;
+}
+
+/* --- Traits --- */
+.pet-profile__traits {
+  margin-bottom: var(--space-lg);
+}
+
+.pet-profile__section-title {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  margin: 0 0 var(--space-sm);
+}
+
+.pet-profile__trait-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.pet-profile__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+}
+
+/* --- Bio --- */
+.pet-profile__bio {
+  margin-bottom: var(--space-xl);
+}
+
+.pet-profile__bio-text {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--color-text);
+  background: var(--color-surface);
+  padding: var(--space-lg);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+/* --- Actions --- */
+.pet-profile__actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.pet-profile__actions .btn {
+  flex: 1;
+}
+
+/* --- Loading / Error --- */
+.pet-profile__loading,
+.pet-profile__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-3xl);
+}
+
+.pet-profile__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: petProfileSpin 0.8s linear infinite;
+}
+
+@keyframes petProfileSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Responsive --- */
+@media (max-width: 639px) {
+  .pet-profile__content {
+    padding: var(--space-md);
+  }
+
+  .pet-profile__details {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pet-profile__actions {
+    flex-direction: column;
+  }
+}

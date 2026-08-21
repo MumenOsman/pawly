@@ -1,0 +1,74 @@
+/* ============================================================
+   CONNECTIONS PAGE STYLES
+   ============================================================ */
+
+.connections-page {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.connections-page__content {
+  padding: var(--space-xl) var(--space-lg);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+.connections-page__title {
+  margin-bottom: var(--space-xl);
+}
+
+.connections-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.connections-section__title {
+  font-size: var(--text-h2);
+  margin-bottom: var(--space-lg);
+  color: var(--color-text);
+}
+
+.connections-section__empty {
+  color: var(--color-text-muted);
+}
+
+.connections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.connection-request-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.connection-request-card__actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.connection-request-card__actions .btn {
+  flex: 1;
+}
+
+.connections-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3xl);
+}
+
+.connections-page__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: connSpin 0.8s linear infinite;
+}
+
+@keyframes connSpin {
+  to { transform: rotate(360deg); }
+}

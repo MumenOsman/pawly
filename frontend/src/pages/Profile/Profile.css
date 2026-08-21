@@ -1,0 +1,734 @@
+/* ============================================================
+   PROFILE PAGE STYLES
+   ============================================================ */
+
+.profile-page {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.profile-page__content {
+  padding: var(--space-xl) var(--space-lg);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+.profile-page__container {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: var(--space-xl);
+}
+
+@media (max-width: 768px) {
+  .profile-page__container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Sidebar --- */
+.profile-page__sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: var(--space-xl) var(--space-lg);
+  box-shadow: var(--shadow-card);
+  height: fit-content;
+}
+
+.profile-page__avatar-wrapper {
+  position: relative;
+  margin-bottom: var(--space-lg);
+}
+
+.profile-page__avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--color-primary);
+}
+
+.profile-page__edit-photo-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(13, 92, 77, 0.75);
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-fast);
+}
+
+.profile-page__avatar-wrapper:hover .profile-page__edit-photo-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+.profile-page__verified-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--color-verified);
+  color: #fff;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.profile-page__nav {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--space-sm);
+}
+
+.profile-page__nav-btn {
+  width: 100%;
+  padding: var(--space-md);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-body);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.profile-page__nav-btn:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.profile-page__nav-btn--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.profile-page__nav-btn--active:hover {
+  background: var(--color-primary-hover);
+  color: #fff;
+}
+
+/* --- Expandable Pet Drawer (Sidebar) --- */
+.profile-page__pets-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  background: var(--color-bg);
+  border-radius: var(--radius-card);
+  margin-top: 8px;
+  border: 1px solid var(--color-border);
+  animation: drawerSlide 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes drawerSlide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  min-height: 52px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.profile-drawer-item:hover {
+  border-color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+.profile-drawer-item--active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.profile-drawer-item__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-primary);
+  flex-shrink: 0;
+}
+
+.profile-drawer-item__name {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--color-text-main);
+  flex-grow: 1;
+}
+
+.profile-drawer-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1.5px dashed var(--color-primary);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.profile-drawer-add-btn:hover {
+  background: var(--color-primary-light);
+  border-style: solid;
+}
+
+/* --- Modal Overlay for Confirm Remove Pet --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow-modal, 0 10px 30px rgba(0, 0, 0, 0.25));
+  border: 1px solid var(--color-border);
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ef4444;
+  margin-bottom: 12px;
+}
+
+.modal-body {
+  font-size: 14px;
+  color: var(--color-text-main);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* --- Chips with Remove Button --- */
+.profile-form__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+}
+
+.profile-form__chip-remove {
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.profile-form__chip-remove:hover {
+  transform: scale(1.2);
+}
+
+/* --- Selection Grid inside Selector Modals --- */
+.selector-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.selector-chip {
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.selector-chip:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.selector-chip--selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: var(--weight-bold);
+}
+
+/* --- Main Form Area --- */
+.profile-page__main {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.profile-page__alert {
+  padding: var(--space-md);
+  border-radius: var(--radius-badge);
+  margin-bottom: var(--space-lg);
+  font-weight: var(--weight-medium);
+}
+
+.profile-page__alert--success {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+/* --- Profile Form Grid --- */
+.profile-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+@media (max-width: 640px) {
+  .profile-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.profile-form__field--full {
+  margin-top: var(--space-lg);
+}
+
+.profile-form__label {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+}
+
+.profile-form__input,
+.profile-form__textarea {
+  width: 100%;
+}
+
+.profile-form__input--disabled {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.profile-form__inline {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.profile-form__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.profile-form__chip {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+}
+
+.profile-form__add-chip {
+  background: transparent;
+  border: 1px dashed var(--color-primary);
+  color: var(--color-primary);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  cursor: pointer;
+}
+
+.profile-form__actions {
+  margin-top: var(--space-xl);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- Pet Multi-Photo Gallery Box (Matching Wireframe) --- */
+.pet-gallery-wireframe {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-xl);
+}
+
+.pet-gallery__main-wrap {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  border: 3px solid var(--color-primary);
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(13, 92, 77, 0.2);
+}
+
+.pet-gallery__main-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pet-gallery__box {
+  position: relative;
+  min-width: 260px;
+  min-height: 170px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-card);
+}
+
+.pet-gallery__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.pet-gallery__thumb-wrap {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+}
+
+.pet-gallery__thumb-wrap--main {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(255, 122, 66, 0.3);
+}
+
+.pet-gallery__thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pet-gallery__set-main-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  color: #FFFFFF;
+  border: none;
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  cursor: pointer;
+}
+
+.pet-gallery__thumb-wrap:hover .pet-gallery__set-main-overlay {
+  opacity: 1;
+}
+
+.pet-gallery__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pet-gallery__add-btn {
+  padding: 4px 14px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pet-gallery__add-btn:hover {
+  background: var(--color-primary);
+  color: #FFFFFF;
+}
+
+/* --- My Pets Wireframe Gallery --- */
+.profile-pets-wireframe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.profile-pets-gallery {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.profile-pets-gallery__item {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: var(--color-bg);
+}
+
+.profile-pets-gallery__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-pets-gallery__item--owner {
+  border-radius: 50%;
+  border-color: var(--color-primary);
+}
+
+.profile-pets-gallery__item--active {
+  border-color: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(255, 122, 66, 0.25);
+}
+
+.profile-pets-gallery__main-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  text-align: center;
+  padding: 2px 0;
+  text-transform: uppercase;
+}
+
+.profile-pets-gallery__add-btn {
+  width: 70px;
+  height: 70px;
+  border-radius: var(--radius-card);
+  border: 2px dashed var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.profile-pets-gallery__add-btn:hover {
+  background: var(--color-primary-light);
+}
+.profile-pets__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-xl);
+}
+
+.profile-pets__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.profile-pet-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.profile-pet-card__header {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.profile-pet-card__photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-bg);
+}
+
+.profile-pet-card__bio {
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+}
+
+.profile-pet-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- Privacy Tab --- */
+.profile-privacy__desc {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xl);
+}
+
+.profile-privacy__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.profile-privacy__card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile-privacy__card--danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger-light);
+}
+
+/* --- Profile Error & Empty State Styles --- */
+.profile-error-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  margin: auto;
+}
+
+.profile-error-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.profile-error-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.profile-error-card p {
+  color: var(--color-text-muted);
+  font-size: var(--text-body);
+  margin-bottom: 1.75rem;
+  line-height: var(--leading-body);
+}
+
+.profile-error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.profile-pets-empty-state {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  background: #F8FAFC;
+  border-radius: var(--radius-card);
+  border: 1px dashed var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.profile-pets-empty-state h3 {
+  font-size: 1.25rem;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.profile-pets-empty-state p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 1rem;
+}

@@ -1,0 +1,592 @@
+/* ============================================================
+   COMBINED 3-STEP REGISTRATION WIZARD STYLES (/register)
+   ============================================================ */
+
+.register-wizard-page {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: calc(100vh - var(--navbar-height));
+    padding: 2.5rem 1.25rem 4rem;
+    background-color: var(--color-bg);
+}
+
+.register-wizard-card {
+    width: 100%;
+    max-width: 680px;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-border);
+    padding: 2.5rem 2.25rem;
+    box-sizing: border-box;
+}
+
+/* --- Wizard Progress Bar & Step Indicators --- */
+.wizard-progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #E2E8F0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.wizard-progress-fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    transition: width 0.3s ease;
+}
+
+.wizard-step-indicators {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 1rem;
+}
+
+.wizard-step-badge {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #F1F5F9;
+    transition: all 0.2s ease;
+}
+
+.wizard-step-badge.active {
+    background-color: rgba(13, 92, 77, 0.1);
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+/* --- Form Headers & Groups --- */
+.wizard-header {
+    text-align: center;
+    margin-bottom: 1.75rem;
+}
+
+.wizard-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--color-text);
+    margin-bottom: 0.35rem;
+}
+
+.wizard-header p {
+    font-size: var(--text-body);
+    color: var(--color-text-muted);
+    line-height: var(--leading-body);
+}
+
+.wizard-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-grid-3 {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1fr;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    min-height: 46px;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: var(--text-body);
+    font-family: var(--font-body);
+    box-sizing: border-box;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-group textarea {
+    min-height: 80px;
+    padding: 0.75rem;
+    resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(13, 92, 77, 0.15);
+}
+
+/* --- Avatar & Pet Photo Upload Section --- */
+.avatar-upload-section,
+.pet-photo-upload-section {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1rem;
+    background: #F8FAFC;
+    border-radius: 16px;
+    border: 1px dashed var(--color-border);
+}
+
+.avatar-upload-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #E2E8F0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748B;
+    text-align: center;
+}
+
+.pet-photo-preview-wrap {
+    width: 90px;
+    height: 72px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #E2E8F0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pet-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pet-photo-placeholder {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748B;
+    text-align: center;
+    padding: 4px;
+}
+
+.avatar-upload-info,
+.pet-photo-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file-upload-btn {
+    display: inline-block;
+    padding: 6px 14px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: fit-content;
+}
+
+.file-upload-btn:hover {
+    background-color: #F1F5F9;
+    border-color: var(--color-primary);
+}
+
+.file-upload-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* --- Temperament Traits Chips --- */
+.temperament-chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.trait-chip {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.trait-chip:hover {
+    background: #E2E8F0;
+}
+
+.trait-chip--active {
+    background-color: #0D5C4D;
+    color: #FFFFFF;
+    border-color: #0D5C4D;
+}
+
+/* --- Wizard Actions Buttons --- */
+.wizard-actions {
+    margin-top: 0.75rem;
+}
+
+.wizard-actions-dual {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.wizard-actions-dual button {
+    flex: 1;
+}
+
+.wizard-footer-link {
+    text-align: center;
+    font-size: var(--text-small);
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+}
+
+.wizard-footer-link a {
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.wizard-footer-link a:hover {
+    text-decoration: underline;
+}
+
+.register-error-banner {
+    background-color: #FEF2F2;
+    color: #DC2626;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid #FECACA;
+    margin-bottom: 1.25rem;
+}
+
+/* ============================================================
+   STEP 3: REVIEW & PET CARD PREVIEW STYLES
+   ============================================================ */
+.wizard-review-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.review-cards-container {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1.5rem;
+    align-items: stretch;
+}
+
+/* Replica of main app Pet Card */
+.pet-card-preview {
+    background: #FFFFFF;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+}
+
+.pet-card-preview__image-wrap {
+    position: relative;
+    height: 180px;
+    background: #E2E8F0;
+}
+
+.pet-card-preview__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pet-card-preview__match-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #0D5C4D;
+    color: #FFFFFF;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.pet-card-preview__body {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.pet-card-preview__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.pet-card-preview__header h2 {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    margin: 0;
+    color: var(--color-text);
+}
+
+.pet-card-preview__breed {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.pet-card-preview__meta {
+    display: flex;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748B;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.pet-card-preview__meta .energy-tag {
+    color: #0D5C4D;
+}
+
+.pet-card-preview__chips {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.review-trait-pill {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #ECFDF5;
+    color: #065F46;
+    border: 1px solid #A7F3D0;
+}
+
+.pet-card-preview__bio {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* Owner Summary Card */
+.owner-summary-card {
+    background: #F8FAFC;
+    border-radius: 18px;
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.owner-summary-card h3 {
+    font-size: 1rem;
+    margin: 0;
+    color: var(--color-text);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.5rem;
+}
+
+.owner-summary-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.owner-summary-avatar-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #0D5C4D;
+    flex-shrink: 0;
+}
+
+.owner-summary-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.owner-summary-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.owner-summary-row h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.owner-summary-username {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.owner-summary-location {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.owner-summary-bio {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #475569;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.owner-summary-interests {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.terms-checkbox-wrap {
+    background: #F8FAFC;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+}
+
+.terms-checkbox-label {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    line-height: 1.4;
+}
+
+.terms-checkbox-label input {
+    margin-top: 3px;
+    cursor: pointer;
+}
+
+.terms-modal-trigger-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: 700;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: underline;
+    display: inline;
+}
+
+.terms-modal-trigger-link:hover {
+    color: #083b31;
+}
+
+.terms-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.75rem;
+}
+
+.terms-dialog-close-x {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.terms-dialog-close-x:hover {
+    background: #F1F5F9;
+    color: var(--color-text);
+}
+
+@media (max-width: 640px) {
+    .register-wizard-card {
+        padding: 1.75rem 1.25rem;
+    }
+    .form-grid-2,
+    .form-grid-3 {
+        grid-template-columns: 1fr;
+    }
+    .review-cards-container {
+        grid-template-columns: 1fr;
+    }
+    .wizard-step-indicators {
+        flex-direction: column;
+        gap: 4px;
+    }
+}

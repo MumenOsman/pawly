@@ -1,0 +1,132 @@
+﻿.verify-step {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  padding: var(--space-xl);
+
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.verify-step h1 {
+  margin: 0;
+  text-align: center;
+}
+
+.verify-step__success-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  font-size: 2rem;
+  font-weight: var(--weight-bold);
+  color: var(--color-verified);
+
+  animation: verify-step-success 0.5s ease-out;
+}
+
+@keyframes verify-step-success {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.verify-step__intro {
+  margin: 0;
+
+  text-align: center;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+}
+
+.verify-step__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.verify-step__section {
+  padding: var(--space-md);
+
+  background: var(--color-background);
+  border-radius: var(--radius-card);
+}
+
+.verify-step__section h2,
+.verify-step__verification h2 {
+  margin-top: 0;
+  margin-bottom: var(--space-sm);
+
+  font-size: var(--text-medium);
+}
+
+.verify-step__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.verify-step__details p {
+  margin: 0;
+
+  font-size: var(--text-small);
+  color: var(--color-text);
+}
+
+.verify-step__photo {
+  margin: 0 0 var(--space-sm);
+
+  font-size: var(--text-small);
+  color: var(--color-verified);
+}
+
+.verify-step__verification {
+  padding: var(--space-md);
+
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.verify-step__verification p {
+  margin: 0;
+
+  font-size: var(--text-small);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.verify-step__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+
+  margin-top: var(--space-md);
+}
+
+@media (max-width: 600px) {
+  .verify-step {
+    padding: var(--space-lg);
+  }
+
+  .verify-step__actions {
+    flex-direction: column-reverse;
+  }
+}
