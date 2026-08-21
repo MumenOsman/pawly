@@ -41,11 +41,12 @@ CREATE TABLE IF NOT EXISTS pets (
     size         VARCHAR(20) NOT NULL,            -- small, medium, large
     about_me     TEXT DEFAULT '',
     pet_photo    VARCHAR(500) DEFAULT '',
+    photos       TEXT[] DEFAULT '{}',
     energy_level VARCHAR(20) NOT NULL,            -- low, medium, high
     pet_age      INTEGER DEFAULT 0,
     temperament  TEXT[] DEFAULT '{}',              -- e.g. {friendly, playful, calm}
-    latitude     DOUBLE PRECISION DEFAULT 0,
-    longitude    DOUBLE PRECISION DEFAULT 0,
+    latitude     DOUBLE PRECISION DEFAULT 60.1699,
+    longitude    DOUBLE PRECISION DEFAULT 24.9384,
     created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
