@@ -1,16 +1,10 @@
-/**
- * Profile Page
- *
- * User profile management, pets list, and privacy settings.
- * Matches wireframe row 2 (right), row 4 (right), and row 5 (right).
- */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/Navbar';
 import Button from '../../components/Button/Button';
 import { getMyProfile, updateProfile, uploadUserPhoto } from '../../api/users';
 import { getMyPets, uploadPetPhoto, createPet, updatePet, deletePet } from '../../api/pets';
-import { FINNISH_LOCATIONS, resolveLocationCoords } from '../../utils/locations';
+import { geocodeLocation, reverseGeocode, resolveLocationCoords, searchLocations, POPULAR_LOCATIONS } from '../../utils/locations';
 import './Profile.css';
 
 export const PET_TRAITS_POOL = [
@@ -40,6 +34,9 @@ export default function Profile() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showInterestsModal, setShowInterestsModal] = useState(false);
   const [showTraitsModal, setShowTraitsModal] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState(POPULAR_LOCATIONS);
+  const [selectedCoords, setSelectedCoords] = useState(null);
   const [profile, setProfile] = useState({
     owner_name: '',
     owner_photo: '',
@@ -54,7 +51,28 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useState(null); // { type: 'success' | 'danger', text: '' }
+
+  // Live place search with 250ms debounce
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      if (!profile.location || profile.location.length < 3) return;
+      try {
+        const results = await searchLocations(profile.location);
+        if (active) {
+          setLocationSuggestions(results || []);
+        }
+      } catch {
+        if (active) setLocationSuggestions([]);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [profile.location]);
 
   useEffect(() => {
     async function loadData() {
@@ -62,37 +80,38 @@ export default function Profile() {
       setFetchError(null);
       try {
         const [profData, petsData] = await Promise.all([
-          getMyProfile().catch((err) => {
-            console.error('Failed to load profile:', err);
-            return null;
-          }),
-          getMyPets().catch((err) => {
-            console.error('Failed to load pets:', err);
-            return [];
-          }),
+          getMyProfile().catch(() => null),
+          getMyPets().catch(() => []),
         ]);
 
-        if (!profData) {
-          setFetchError('Unable to load user profile. Please make sure you are logged in with an active account.');
-          return;
+        if (profData) {
+          setProfile({
+            owner_name: profData.owner_name || '',
+            owner_photo: getFullPhotoUrl(profData.owner_photo),
+            username: profData.username || '',
+            email: profData.email || '',
+            location: profData.location || '',
+            bio: profData.about_me || '',
+            interests: Array.isArray(profData.interests) ? profData.interests : [],
+            date_of_birth: profData.date_of_birth || '',
+          });
         }
 
-        setProfile({
-          owner_name: profData.owner_name || '',
-          owner_photo: getFullPhotoUrl(profData.owner_photo, ''),
-          username: profData.username || '',
-          email: profData.email || '',
-          location: profData.location || '',
-          bio: profData.about_me || '',
-          interests: Array.isArray(profData.interests) ? profData.interests : [],
-          date_of_birth: profData.date_of_birth || '',
-        });
+        if (Array.isArray(petsData)) {
+          const formattedPets = petsData.map((p) => {
+            const rawPhotos = p.photos && p.photos.length > 0 ? p.photos : (p.pet_photo ? [p.pet_photo] : []);
+            const cleanPhotos = rawPhotos.map((url) => getFullPhotoUrl(url, '/paw-icon.svg'));
+            const mainPhoto = cleanPhotos[0] || '/paw-icon.svg';
 
-        if (petsData && Array.isArray(petsData)) {
-          const formattedPets = petsData.map((p) => ({
-            ...p,
-            pet_photo: getFullPhotoUrl(p.pet_photo, '/paw-icon.svg'),
-          }));
+            return {
+              ...p,
+              pet_photo: mainPhoto,
+              photos: cleanPhotos.length > 0 ? cleanPhotos : [mainPhoto],
+              temperament: Array.isArray(p.temperament) ? p.temperament : [],
+              pet_age: p.pet_age !== undefined ? p.pet_age : 0,
+              energy_level: p.energy_level || 'medium',
+            };
+          });
           setPets(formattedPets);
         } else {
           setPets([]);
@@ -111,6 +130,39 @@ export default function Profile() {
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setMessage({ type: 'danger', text: 'Geolocation is not supported by your browser.' });
+      return;
+    }
+    setSaving(true);
+    setMessage({ type: 'info', text: 'Detecting your location...' });
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const detectedCity = await reverseGeocode(latitude, longitude);
+          setProfile((prev) => ({
+            ...prev,
+            location: detectedCity,
+            latitude,
+            longitude,
+          }));
+          setMessage({ type: 'success', text: `Location set to ${detectedCity}` });
+        } catch {
+          setMessage({ type: 'danger', text: 'Failed to resolve location address.' });
+        } finally {
+          setSaving(false);
+        }
+      },
+      (err) => {
+        setSaving(false);
+        setMessage({ type: 'danger', text: err.message || 'Location access denied.' });
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     if (!profile.interests || profile.interests.length < 1) {
@@ -124,7 +176,10 @@ export default function Profile() {
     setSaving(true);
     setMessage(null);
     try {
-      const coords = resolveLocationCoords(profile.location);
+      let coords = selectedCoords;
+      if (!coords || !coords.lat) {
+        coords = await geocodeLocation(profile.location);
+      }
       const payload = {
         ...profile,
         latitude: coords.lat,
@@ -399,19 +454,25 @@ export default function Profile() {
             <div className="profile-page__user-info" style={{ textAlign: 'center', marginBottom: '20px' }}>
               <h2 className="profile-page__name" style={{ fontSize: '18px', fontWeight: 'bold' }}>{profile.owner_name || 'Member'}</h2>
               <span className="profile-page__handle" style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>@{profile.username || 'user'}</span>
-            </div>
-
-            <nav className="profile-page__nav">
+            </div>            <nav className="profile-page__nav">
               <button
+                type="button"
                 className={`profile-page__nav-btn ${activeTab === 'profile' ? 'profile-page__nav-btn--active' : ''}`}
-                onClick={() => setActiveTab('profile')}
+                onClick={() => {
+                  setMessage(null);
+                  setActiveTab('profile');
+                }}
                 id="profile-tab-profile"
               >
                 My Profile
               </button>
               <button
+                type="button"
                 className={`profile-page__nav-btn ${activeTab === 'pets' ? 'profile-page__nav-btn--active' : ''}`}
-                onClick={() => setActiveTab('pets')}
+                onClick={() => {
+                  setMessage(null);
+                  setActiveTab('pets');
+                }}
                 id="profile-tab-pets"
               >
                 My Pets ({pets.length})
@@ -451,8 +512,12 @@ export default function Profile() {
               )}
 
               <button
+                type="button"
                 className={`profile-page__nav-btn ${activeTab === 'privacy' ? 'profile-page__nav-btn--active' : ''}`}
-                onClick={() => setActiveTab('privacy')}
+                onClick={() => {
+                  setMessage(null);
+                  setActiveTab('privacy');
+                }}
                 id="profile-tab-privacy"
               >
                 Privacy Settings
@@ -463,17 +528,25 @@ export default function Profile() {
           {/* Right Main Form Area */}
           <section className="profile-page__main">
             {message && (
-              <div className={`profile-page__alert profile-page__alert--${message.type}`}>
-                {message.text}
+              <div className={`profile-form__alert profile-form__alert--${message.type}`} role="alert">
+                <span>{message.text}</span>
+                <button
+                  type="button"
+                  className="profile-form__alert-dismiss"
+                  onClick={() => setMessage(null)}
+                  title="Dismiss notification"
+                >
+                  ×
+                </button>
               </div>
             )}
 
-            {/* TAB 1: MY PROFILE */}
+            {/* TAB 1: USER PROFILE DETAILS */}
             {activeTab === 'profile' && (
-              <form onSubmit={handleSaveProfile} className="profile-form">
+              <form className="profile-form" onSubmit={handleSaveProfile}>
                 <div className="profile-form__grid">
                   <div className="profile-form__field">
-                    <label className="profile-form__label">Name</label>
+                    <label className="profile-form__label">Full Name</label>
                     <input
                       type="text"
                       name="owner_name"
@@ -484,9 +557,9 @@ export default function Profile() {
                   </div>
 
                   <div className="profile-form__field">
-                    <label className="profile-form__label">Date of birth</label>
+                    <label className="profile-form__label">Date of Birth</label>
                     <input
-                      type="text"
+                      type="date"
                       name="date_of_birth"
                       value={profile.date_of_birth}
                       onChange={handleChange}
@@ -515,26 +588,58 @@ export default function Profile() {
                       className="profile-form__input profile-form__input--disabled"
                     />
                   </div>
-
-                  <div className="profile-form__field">
-                    <label className="profile-form__label">Location / City</label>
-                    <div className="profile-form__inline">
-                      <input
-                        type="text"
-                        name="location"
-                        list="finnish-locations-list"
-                        value={profile.location}
-                        onChange={handleChange}
-                        placeholder="Type city or select..."
-                        className="profile-form__input"
-                        id="profile-location-input"
-                      />
-                      <datalist id="finnish-locations-list">
-                        {FINNISH_LOCATIONS.map((loc) => (
-                          <option key={loc.name} value={loc.name} />
-                        ))}
-                      </datalist>
+                  <div className="profile-form__field" style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label className="profile-form__label" style={{ margin: 0 }}>Location / City</label>
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontSize: '0.82rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                        title="Auto-detect current GPS location"
+                      >
+                        Use My Location
+                      </button>
                     </div>
+                    <input
+                      type="text"
+                      name="location"
+                      value={profile.location || ''}
+                      onChange={(e) => {
+                        setProfile((prev) => ({ ...prev, location: e.target.value }));
+                        setShowLocationSuggestions(true);
+                      }}
+                      onFocus={() => setShowLocationSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
+                      placeholder="Type any city worldwide (e.g. Stockholm, Vaasa, Berlin)..."
+                      className="profile-form__input"
+                      id="profile-location-input"
+                      autoComplete="off"
+                    />
+                    {showLocationSuggestions && locationSuggestions.length > 0 && (
+                      <ul className="reg-location-dropdown">
+                        {locationSuggestions.map((loc, idx) => (
+                          <li
+                            key={`${loc.name}-${idx}`}
+                            onMouseDown={() => {
+                              setProfile((prev) => ({ ...prev, location: loc.name }));
+                              setSelectedCoords({ lat: loc.lat, lng: loc.lng });
+                              setShowLocationSuggestions(false);
+                            }}
+                            className="reg-location-item"
+                          >
+                            {loc.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
 
@@ -548,7 +653,6 @@ export default function Profile() {
                           type="button"
                           className="profile-form__chip-remove"
                           onClick={() => handleToggleInterest(interest)}
-                          title="Remove interest"
                         >
                           ×
                         </button>
@@ -594,8 +698,8 @@ export default function Profile() {
                   </Button>
                 </div>
               ) : (
-                <div className="profile-pets-wireframe">
-                  {/* Photo selector gallery matching wireframe */}
+                <div className="profile-pets-tab-content">
+                  {/* Pet Multi-Photo Gallery Matching Wireframe */}
                   <div className="pet-gallery-wireframe">
                     {/* Left: Big Circular Main Image */}
                     <div className="pet-gallery__main-wrap">
@@ -610,131 +714,165 @@ export default function Profile() {
                       />
                     </div>
 
-                  {/* Right: Boxed Gallery Section */}
-                  <div className="pet-gallery__box">
-                    <div className="pet-gallery__grid">
-                      {((currentPet?.photos && currentPet.photos.length > 0)
-                        ? currentPet.photos
-                        : (currentPet?.pet_photo ? [currentPet.pet_photo] : [])
-                      ).map((photo, pIdx) => {
-                        const isMain = photo === currentPet?.pet_photo;
-                        return (
-                          <div
-                            key={pIdx}
-                            className={`pet-gallery__thumb-wrap ${isMain ? 'pet-gallery__thumb-wrap--main' : ''}`}
-                          >
-                            <img
-                              src={photo}
-                              alt={`Pet ${pIdx + 1}`}
-                              className="pet-gallery__thumb-img"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = '/paw-icon.svg';
-                              }}
-                            />
-                            <button
-                              type="button"
-                              className="pet-gallery__set-main-overlay"
-                              onClick={() => handleSetMainPhoto(photo)}
-                              title="Set as main image"
+                    {/* Right: Boxed Gallery Section */}
+                    <div className="pet-gallery__box">
+                      <div className="pet-gallery__grid">
+                        {(currentPet?.photos || [currentPet?.pet_photo || '/paw-icon.svg']).map((photo, pIdx) => {
+                          const isMain = photo === currentPet?.pet_photo;
+                          return (
+                            <div
+                              key={pIdx}
+                              className={`pet-gallery__thumb-wrap ${isMain ? 'pet-gallery__thumb-wrap--main' : ''}`}
                             >
-                              Set Main
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
+                              <img
+                                src={photo}
+                                alt={`Pet ${pIdx + 1}`}
+                                className="pet-gallery__thumb-img"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = '/paw-icon.svg';
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="pet-gallery__set-main-overlay"
+                                onClick={() => handleSetMainPhoto(photo)}
+                                title="Set as main image"
+                              >
+                                Set Main
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
 
-                    {/* Add button at bottom right of the box */}
-                    <div className="pet-gallery__footer">
-                      <button
-                        type="button"
-                        className="pet-gallery__add-btn"
-                        onClick={() => document.getElementById(`pet-photo-input-${currentPet?.id || 1}`)?.click()}
-                      >
-                        Add
-                      </button>
-                      <input
-                        type="file"
-                        id={`pet-photo-input-${currentPet?.id || 1}`}
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={(e) => handlePetPhotoUpload(e, currentPet?.id || 1)}
-                      />
+                      {/* Add button at bottom right of the box */}
+                      <div className="pet-gallery__footer">
+                        <button
+                          type="button"
+                          className="pet-gallery__add-btn"
+                          onClick={() => document.getElementById(`pet-photo-input-${currentPet?.id || 1}`)?.click()}
+                        >
+                          Add
+                        </button>
+                        <input
+                          type="file"
+                          id={`pet-photo-input-${currentPet?.id || 1}`}
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => handlePetPhotoUpload(e, currentPet?.id || 1)}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Pet details form bound to selected pet */}
-                <form className="profile-form" onSubmit={handleSavePet}>
-                  <div className="profile-form__grid">
-                    <div className="profile-form__field">
-                      <label className="profile-form__label">Name</label>
-                      <input
-                        type="text"
-                        value={currentPet?.pet_name || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPets((prev) =>
-                            prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, pet_name: val } : p))
-                          );
-                        }}
-                        className="profile-form__input"
-                      />
-                    </div>
+                  {/* Pet details form bound to selected pet */}
+                  <form className="profile-form" onSubmit={handleSavePet}>
+                    <div className="profile-form__grid">
+                      <div className="profile-form__field">
+                        <label className="profile-form__label">Name</label>
+                        <input
+                          type="text"
+                          value={currentPet?.pet_name || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPets((prev) =>
+                              prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, pet_name: val } : p))
+                            );
+                          }}
+                          className="profile-form__input"
+                        />
+                      </div>
 
-                    <div className="profile-form__field">
-                      <label className="profile-form__label">Animal Type</label>
-                      <select
-                        value={currentPet?.animal_type ? currentPet.animal_type.toLowerCase() : ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPets((prev) =>
-                            prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, animal_type: val } : p))
-                          );
-                        }}
-                        className="profile-form__input"
-                      >
-                        <option value="">Select a type</option>
-                        <option value="dog">Dog</option>
-                        <option value="cat">Cat</option>
-                      </select>
-                    </div>
+                      <div className="profile-form__field">
+                        <label className="profile-form__label">Animal Type</label>
+                        <select
+                          value={currentPet?.animal_type ? currentPet.animal_type.toLowerCase() : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPets((prev) =>
+                              prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, animal_type: val } : p))
+                            );
+                          }}
+                          className="profile-form__input"
+                        >
+                          <option value="">Select a type</option>
+                          <option value="dog">Dog</option>
+                          <option value="cat">Cat</option>
+                        </select>
+                      </div>
 
-                    <div className="profile-form__field">
-                      <label className="profile-form__label">Size</label>
-                      <select
-                        value={currentPet?.size ? (currentPet.size.charAt(0).toUpperCase() + currentPet.size.slice(1).toLowerCase()) : ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPets((prev) =>
-                            prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, size: val } : p))
-                          );
-                        }}
-                        className="profile-form__input"
-                      >
-                        <option value="">Select a size</option>
-                        <option value="Small">Small</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Large">Large</option>
-                      </select>
-                    </div>
+                      <div className="profile-form__field">
+                        <label className="profile-form__label">Size</label>
+                        <select
+                          value={currentPet?.size ? (currentPet.size.charAt(0).toUpperCase() + currentPet.size.slice(1).toLowerCase()) : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPets((prev) =>
+                              prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, size: val } : p))
+                            );
+                          }}
+                          className="profile-form__input"
+                        >
+                          <option value="">Select a size</option>
+                          <option value="Small">Small</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Large">Large</option>
+                        </select>
+                      </div>
 
-                    <div className="profile-form__field">
-                      <label className="profile-form__label">Breed</label>
-                      <input
-                        type="text"
-                        value={currentPet?.breed || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setPets((prev) =>
-                            prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, breed: val } : p))
-                          );
-                        }}
-                        className="profile-form__input"
-                      />
+                      <div className="profile-form__field">
+                        <label className="profile-form__label">Breed</label>
+                        <input
+                          type="text"
+                          value={currentPet?.breed || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPets((prev) =>
+                              prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, breed: val } : p))
+                            );
+                          }}
+                          className="profile-form__input"
+                        />
+                      </div>
+
+                      <div className="profile-form__field">
+                        <label className="profile-form__label">Age (years)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="30"
+                          step="1"
+                          value={currentPet?.pet_age !== undefined && currentPet?.pet_age !== null ? currentPet.pet_age : ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Number(e.target.value);
+                            setPets((prev) =>
+                              prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, pet_age: val } : p))
+                            );
+                          }}
+                          className="profile-form__input"
+                          placeholder="e.g. 2"
+                        />
+                      </div>
+
+                      <div className="profile-form__field">
+                        <label className="profile-form__label">Energy Level</label>
+                        <select
+                          value={currentPet?.energy_level ? currentPet.energy_level.toLowerCase() : 'medium'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPets((prev) =>
+                              prev.map((p, idx) => (idx === selectedPetIndex ? { ...p, energy_level: val } : p))
+                            );
+                          }}
+                          className="profile-form__input"
+                        >
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                        </select>
+                      </div>
                     </div>
-                  </div>
 
                   <div className="profile-form__field profile-form__field--full">
                     <label className="profile-form__label">Traits</label>

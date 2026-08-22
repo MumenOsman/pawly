@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { register } from '../../api/auth';
 import { updateProfile, uploadUserPhoto } from '../../api/users';
 import { createPet, uploadPetPhoto } from '../../api/pets';
+import { geocodeLocation, reverseGeocode, searchLocations, POPULAR_LOCATIONS } from '../../utils/locations';
 import Button from '../../components/Button/Button';
 import './Register.css';
 
@@ -36,11 +37,23 @@ export default function Register() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(STEPS.PROFILE);
 
+  // If already signed in, redirect directly to Discover
+  useEffect(() => {
+    const token = localStorage.getItem('pawly_token');
+    if (token) {
+      navigate('/discover', { replace: true });
+    }
+  }, [navigate]);
+
   // --- Step 1 State: Person Profile & Account Details ---
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
-  const [location, setLocation] = useState('Helsinki, Finland');
+  const [location, setLocation] = useState('');
+  const [selectedCoords, setSelectedCoords] = useState(null);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,6 +73,30 @@ export default function Register() {
   const [selectedTemperaments, setSelectedTemperaments] = useState(['Friendly', 'Playful']);
   const [petPhotoFile, setPetPhotoFile] = useState(null);
   const [petPhotoPreview, setPetPhotoPreview] = useState('');
+
+  // Live place search with 250ms debounce
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      if (!location || location.length < 3) return;
+      setLoadingLocations(true);
+      try {
+        const results = await searchLocations(location);
+        if (active) {
+          setLocationSuggestions(results || []);
+        }
+      } catch {
+        if (active) setLocationSuggestions([]);
+      } finally {
+        if (active) setLoadingLocations(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [location]);
 
   // --- UI & Submission State ---
   const [error, setError] = useState('');
@@ -91,7 +128,7 @@ export default function Register() {
         return prev.filter((t) => t !== trait);
       }
       if (prev.length >= 5) {
-        setError('You can select a maximum of 5 pet traits.');
+        setError('Maximum 5 traits allowed.');
         return prev;
       }
       setError('');
@@ -106,7 +143,7 @@ export default function Register() {
         return prev.filter((item) => item !== interest);
       }
       if (prev.length >= 5) {
-        setError('You can select a maximum of 5 interests.');
+        setError('Maximum 5 interests allowed.');
         return prev;
       }
       setError('');
@@ -114,32 +151,34 @@ export default function Register() {
     });
   };
 
-  // --- Navigation & Step Validation ---
-  const handleStep1Submit = (e) => {
-    e.preventDefault();
-
+  // --- Step 1 Validation & Next ---
+  const handleStep1Next = () => {
     if (!name.trim()) {
       setError('Please enter your full name.');
       return;
     }
     if (!username.trim()) {
-      setError('Please choose a username.');
+      setError('Please enter a username.');
       return;
     }
     if (!dateOfBirth) {
-      setError('Please enter your date of birth.');
+      setError('Please provide your date of birth.');
       return;
     }
-    if (!email.trim()) {
-      setError('Please enter your email address.');
+    if (!location.trim()) {
+      setError('Please provide your location.');
       return;
     }
-    if (password.length < 8) {
+    if (!email.trim() || !email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password || password.length < 8) {
       setError('Password must be at least 8 characters long.');
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match. Please verify your password.');
+      setError('Passwords do not match.');
       return;
     }
     if (selectedInterests.length < 1) {
@@ -153,6 +192,11 @@ export default function Register() {
 
     setError('');
     setCurrentStep(STEPS.PET);
+  };
+
+  const handleStep1Submit = (e) => {
+    if (e) e.preventDefault();
+    handleStep1Next();
   };
 
   const handleStep2Submit = (e) => {
@@ -184,6 +228,30 @@ export default function Register() {
     setCurrentStep(STEPS.REVIEW);
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setError('');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const detectedCity = await reverseGeocode(latitude, longitude);
+          setLocation(detectedCity);
+          setShowLocationSuggestions(false);
+        } catch {
+          setError('Failed to resolve city address from GPS.');
+        }
+      },
+      (err) => {
+        setError(err.message || 'Location access denied.');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
   const handleFinalSubmit = async () => {
     if (!agreedToTerms) {
       setError('Please agree to Pawly community safety guidelines to continue.');
@@ -194,6 +262,9 @@ export default function Register() {
     setLoading(true);
 
     try {
+      // Resolve dynamic coordinates for any city/town typed
+      const coords = await geocodeLocation(location.trim());
+
       // 1. Create User Account & JWT Session
       await register(email.trim(), password, {
         owner_name: name.trim(),
@@ -212,18 +283,20 @@ export default function Register() {
         }
       }
 
-      // 3. Update User Profile Details
+      // 3. Update User Profile Details with real coordinates
       await updateProfile({
         owner_name: name.trim(),
         username: username.trim(),
         date_of_birth: dateOfBirth,
         location: location.trim() || 'Helsinki, Finland',
+        latitude: coords.lat,
+        longitude: coords.lng,
         bio: ownerBio.trim(),
         interests: selectedInterests,
         owner_photo: ownerPhotoURL,
       });
 
-      // 4. Create First Pet Profile
+      // 4. Create First Pet Profile inheriting real coordinates
       const petRes = await createPet({
         pet_name: petName.trim(),
         animal_type: animalType.toLowerCase(),
@@ -233,6 +306,8 @@ export default function Register() {
         energy_level: energyLevel.toLowerCase(),
         about_me: petAboutMe.trim() || 'Friendly pet looking for buddies!',
         temperament: selectedTemperaments,
+        latitude: coords.lat,
+        longitude: coords.lng,
         pet_photo: '/paw-icon.svg',
       });
 
@@ -358,16 +433,60 @@ export default function Register() {
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="reg-location">Location *</label>
+              <div className="form-group" style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label htmlFor="reg-location" style={{ margin: 0 }}>Location *</label>
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--color-primary)',
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                    title="Auto-detect current GPS location"
+                  >
+                    Use My Location
+                  </button>
+                </div>
                 <input
                   id="reg-location"
+                  name="pawly_search_location_field"
                   type="text"
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Töölö, Helsinki"
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setShowLocationSuggestions(true);
+                  }}
+                  onFocus={() => setShowLocationSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 250)}
+                  placeholder="Type any city worldwide (e.g. Stockholm, Vaasa, Berlin)..."
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  spellCheck="false"
                   required
                 />
+                {showLocationSuggestions && locationSuggestions.length > 0 && (
+                  <ul className="reg-location-dropdown">
+                    {locationSuggestions.map((loc, idx) => (
+                      <li
+                        key={`${loc.name}-${idx}`}
+                        onMouseDown={() => {
+                          setLocation(loc.name);
+                          setSelectedCoords({ lat: loc.lat, lng: loc.lng });
+                          setShowLocationSuggestions(false);
+                        }}
+                        className="reg-location-item"
+                      >
+                        {loc.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 

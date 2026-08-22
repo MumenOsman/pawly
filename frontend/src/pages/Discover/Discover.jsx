@@ -181,6 +181,7 @@ export default function Discover() {
   const [myPets, setMyPets] = useState(() => getCachedMyPets());
   const [selectedPetIds, setSelectedPetIds] = useState(() => getSavedSelectedPetIds([]));
   const [userLocation, setUserLocation] = useState({ lat: 60.1778, lng: 24.9247, name: 'Helsinki (Töölö)' });
+  const [maxDistance, setMaxDistance] = useState(15);
 
   // Fetch user's own pets & profile location on mount
   useEffect(() => {
@@ -204,19 +205,19 @@ export default function Discover() {
     fetchUserPetsAndLocation();
   }, []);
 
-  // Load recommendations whenever selectedPetIds changes
+  // Load recommendations whenever selectedPetIds or maxDistance changes
   const loadCards = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await loadRecommendationCards(selectedPetIds);
+      const data = await loadRecommendationCards(selectedPetIds, maxDistance);
       setCards(data || []);
     } catch {
       setCards([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedPetIds]);
+  }, [selectedPetIds, maxDistance]);
 
   useEffect(() => {
     loadCards();
@@ -489,6 +490,27 @@ export default function Discover() {
         onTogglePet={handleTogglePet}
       />
 
+      <div className="discover__filter-toolbar">
+        <div className="discover__distance-box">
+          <label htmlFor="distance-radius-select" className="discover__distance-label">
+            Distance Radius:
+          </label>
+          <select
+            id="distance-radius-select"
+            value={maxDistance}
+            onChange={(e) => setMaxDistance(Number(e.target.value))}
+            className="discover__distance-select"
+          >
+            <option value={1}>Within 1 km</option>
+            <option value={5}>Within 5 km</option>
+            <option value={10}>Within 10 km</option>
+            <option value={15}>Within 15 km (Default)</option>
+            <option value={25}>Within 25 km</option>
+            <option value={40}>Within 40 km (Max)</option>
+          </select>
+        </div>
+      </div>
+
       <main className={`discover__content discover__content--${view.toLowerCase()}`}>
         {loading ? (
           <div className="discover__loading">
@@ -502,8 +524,8 @@ export default function Discover() {
           </div>
         ) : cards.length === 0 ? (
           <div className="discover__empty">
-            <h2>No recommendations right now</h2>
-            <p>Check back later for new playmate matches!</p>
+            <h2>No recommendations within {maxDistance} km</h2>
+            <p>Try increasing your distance radius (up to 40 km) to find playmates further out!</p>
           </div>
         ) : (
           <>

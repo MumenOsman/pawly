@@ -122,3 +122,5 @@ CREATE INDEX IF NOT EXISTS idx_pets_owner_id ON pets(owner_id);
 CREATE INDEX IF NOT EXISTS idx_pets_animal_type ON pets(animal_type);
 CREATE INDEX IF NOT EXISTS idx_connection_requests_receiver ON connection_requests(receiver_pet_id);
 CREATE INDEX IF NOT EXISTS idx_connection_requests_sender ON connection_requests(sender_pet_id);
+CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);

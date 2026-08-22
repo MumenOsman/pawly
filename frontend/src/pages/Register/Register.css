@@ -590,3 +590,35 @@
         gap: 4px;
     }
 }
+
+/* Location Autocomplete Dropdown */
+.reg-location-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    margin: 4px 0 0;
+    padding: 4px 0;
+    list-style: none;
+}
+
+.reg-location-item {
+    padding: 9px 14px;
+    font-size: 0.9rem;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.reg-location-item:hover {
+    background: rgba(13, 92, 77, 0.08);
+    color: var(--color-primary);
+    font-weight: 600;
+}

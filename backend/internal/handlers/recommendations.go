@@ -182,10 +182,15 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 		bestMatchedPetName := ""
 		minDistance := 9999.0
 
-		// Distance radius filter (strict max 10km search radius)
-		maxDistanceKM := 10.0
+		// Distance radius filter (min 1km, max 40km, default 15km)
+		maxDistanceKM := 15.0
 		if maxDistParam := r.URL.Query().Get("max_distance"); maxDistParam != "" {
-			if md, err := strconv.ParseFloat(maxDistParam, 64); err == nil && md > 0 {
+			if md, err := strconv.ParseFloat(maxDistParam, 64); err == nil {
+				if md < 1.0 {
+					md = 1.0
+				} else if md > 40.0 {
+					md = 40.0
+				}
 				maxDistanceKM = md
 			}
 		}
@@ -207,7 +212,7 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 				minDistance = dist
 			}
 
-			// Calculate score based strictly on core pet bio fields from get_recommendations.sql
+			// Calculate score based on core pet bio fields
 			score := calculatePetMatchScore(myPet, rec, dist)
 			if score > bestScore {
 				bestScore = score
@@ -215,7 +220,7 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Filter out pets exceeding the strict max distance radius (10km)
+		// Filter out pets exceeding the max distance radius
 		if minDistance > maxDistanceKM && r.URL.Query().Get("include_far") != "true" {
 			continue
 		}
