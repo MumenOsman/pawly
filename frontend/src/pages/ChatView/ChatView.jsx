@@ -17,7 +17,8 @@ import { getChats, getMessages, markAsRead, sendChatMessage } from '../../api/ch
 import { getMyProfile } from '../../api/users';
 import './ChatView.css';
 
-const getFullPhotoUrl = (url, fallback = '/placeholder-user.svg') => {
+// Helper to prepend backend base URL for uploaded media assets
+  const getFullPhotoUrl = (url, fallback = '/placeholder-user.svg') => {
   if (!url) return fallback;
   if (url.startsWith('/uploads')) {
     return `http://localhost:3000${url}`;
