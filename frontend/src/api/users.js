@@ -48,6 +48,13 @@ export function updateProfile(data) {
   });
 }
 
+/** Delete authenticated user account */
+export function deleteAccount() {
+  return apiFetch('/me', {
+    method: 'DELETE',
+  });
+}
+
 /**
  * Upload profile photo for authenticated user.
  *
