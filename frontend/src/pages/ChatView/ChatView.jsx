@@ -190,6 +190,7 @@ export default function ChatView() {
   }, [activeChatId]);
 
   // Reorder chats dynamically so the most recently active chat rises to the top
+  // Elevates conversation with latest message to top of conversation list in real-time
   const updateChatListWithLatestMessage = useCallback((chatId, text, timeStr) => {
     setChats((prevChats) => {
       const chatIndex = prevChats.findIndex((c) => String(c.id) === String(chatId));
