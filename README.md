@@ -90,6 +90,9 @@ web/
 ### 1. Database Setup
 Ensure PostgreSQL is running locally on port `5432`:
 ```bash
+# Create database if not exists
+psql -U postgres -c "CREATE DATABASE pawly;"
+
 # Initialize schema
 cd web/backend
 psql -U postgres -d pawly -f sql/schema/001_initial.sql
