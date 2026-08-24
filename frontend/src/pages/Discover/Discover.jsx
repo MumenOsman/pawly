@@ -504,6 +504,7 @@ export default function Discover() {
             Distance Radius:
           </label>
           <select
+            // Distance radius selector without default/max suffixes
             id="distance-radius-select"
             value={maxDistance}
             onChange={(e) => setMaxDistance(Number(e.target.value))}
