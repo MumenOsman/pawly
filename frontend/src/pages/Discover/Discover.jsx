@@ -416,6 +416,7 @@ export default function Discover() {
   };
 
   // Render Leaflet Map with Park/Neighborhood Clustering
+  // Renders Leaflet map with persistent overlay banner during empty states
   const renderMap = () => (
     <div className="discover__map-container">
       {cards.length === 0 && (
