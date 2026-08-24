@@ -145,3 +145,6 @@ npm run dev
 
 ## License
 MIT License • Pawly 2026
+
+
+<!-- Architecture: Geocoding via Nominatim & Haversine Distance Filter -->
