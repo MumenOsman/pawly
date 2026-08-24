@@ -148,3 +148,5 @@ MIT License • Pawly 2026
 
 
 <!-- Architecture: Geocoding via Nominatim & Haversine Distance Filter -->
+
+<!-- Contributing: Tested against PostgreSQL 16 & React 19 -->
