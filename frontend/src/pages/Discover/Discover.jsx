@@ -418,6 +418,13 @@ export default function Discover() {
   // Render Leaflet Map with Park/Neighborhood Clustering
   const renderMap = () => (
     <div className="discover__map-container">
+      {cards.length === 0 && (
+        <div className="discover__map-overlay-banner">
+          {maxDistance >= 40
+            ? 'No more paws found nearby today. Check back soon for new buddies!'
+            : `No paws found within ${maxDistance} km today. Try expanding your distance radius, or check back later!`}
+        </div>
+      )}
       <MapContainer
         center={DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
@@ -504,9 +511,9 @@ export default function Discover() {
             <option value={1}>Within 1 km</option>
             <option value={5}>Within 5 km</option>
             <option value={10}>Within 10 km</option>
-            <option value={15}>Within 15 km (Default)</option>
+            <option value={15}>Within 15 km</option>
             <option value={25}>Within 25 km</option>
-            <option value={40}>Within 40 km (Max)</option>
+            <option value={40}>Within 40 km</option>
           </select>
         </div>
       </div>
@@ -522,10 +529,18 @@ export default function Discover() {
             <p>{error}</p>
             <Button onClick={loadCards}>Try Again</Button>
           </div>
-        ) : cards.length === 0 ? (
+        ) : cards.length === 0 && view === 'Lists' ? (
           <div className="discover__empty">
-            <h2>No recommendations within {maxDistance} km</h2>
-            <p>Try increasing your distance radius (up to 40 km) to find playmates further out!</p>
+            <h2>
+              {maxDistance >= 40
+                ? 'No more paws found nearby today'
+                : `No paws found within ${maxDistance} km today`}
+            </h2>
+            <p>
+              {maxDistance >= 40
+                ? 'Looks like you have seen all local playmates for now. Take a stroll with your pet and check back soon for new buddies!'
+                : 'Looks like all local playmates in this radius have been explored for now. Try expanding your distance radius, or check back later!'}
+            </p>
           </div>
         ) : (
           <>
@@ -539,7 +554,24 @@ export default function Discover() {
             {view === 'Both' && (
               <div className="discover__split">
                 <div className="discover__split-list">
-                  {selectedPet ? renderInPlacePetDetail(selectedPet) : renderCardGrid()}
+                  {cards.length === 0 ? (
+                    <div className="discover__empty" style={{ margin: 'auto' }}>
+                      <h2>
+                        {maxDistance >= 40
+                          ? 'No more paws found nearby today'
+                          : `No paws found within ${maxDistance} km today`}
+                      </h2>
+                      <p>
+                        {maxDistance >= 40
+                          ? 'Looks like you have seen all local playmates for now. Check back soon for new buddies!'
+                          : 'Try expanding your distance radius above, or check back later!'}
+                      </p>
+                    </div>
+                  ) : selectedPet ? (
+                    renderInPlacePetDetail(selectedPet)
+                  ) : (
+                    renderCardGrid()
+                  )}
                 </div>
                 <div className="discover__split-map">
                   {renderMap()}
