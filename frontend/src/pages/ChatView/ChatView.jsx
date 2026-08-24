@@ -208,6 +208,7 @@ export default function ChatView() {
   }, []);
 
   // Robust scroll to bottom for message stream
+  // Automatically scrolls conversation container to latest message
   const scrollToBottom = useCallback((instant = false) => {
     requestAnimationFrame(() => {
       if (messagesContainerRef.current) {
