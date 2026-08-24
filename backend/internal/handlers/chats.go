@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -217,4 +219,73 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		"page":     1,
 		"has_more": false,
 	})
+}
+
+// SendMessage persists a message sent to a specific chat.
+// POST /chats/{id}/messages
+func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
+	if !h.requireDB(w) {
+		return
+	}
+
+	chatID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid chat ID")
+		return
+	}
+
+	userID := getUserID(r)
+	if userID == 0 {
+		var u1, u2 int
+		err := h.DB.QueryRow(`
+			SELECT p1.owner_id, p2.owner_id 
+			FROM chats c 
+			JOIN connections conn ON c.connection_id = conn.id
+			JOIN pets p1 ON conn.pet1_id = p1.id
+			JOIN pets p2 ON conn.pet2_id = p2.id
+			WHERE c.id = $1
+		`, chatID).Scan(&u1, &u2)
+		if err == nil && u1 > 0 {
+			userID = u1
+		} else {
+			userID = 106
+		}
+	}
+
+	var req struct {
+		Body string `json:"body"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Body) == "" {
+		writeError(w, http.StatusBadRequest, "Message body cannot be empty")
+		return
+	}
+
+	// Synchronize messages_id_seq to prevent PK collision
+	_, _ = h.DB.Exec(`SELECT setval('messages_id_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM messages), 1));`)
+
+	type msgResp struct {
+		ID           int       `json:"id"`
+		ChatID       int       `json:"chat_id"`
+		SenderUserID int       `json:"sender_user_id"`
+		Body         string    `json:"body"`
+		CreatedAt    time.Time `json:"created_at"`
+	}
+
+	var msg msgResp
+	err = h.DB.QueryRow(`
+		INSERT INTO messages (chat_id, sender_user_id, body, created_at)
+		VALUES ($1, $2, $3, NOW())
+		RETURNING id, chat_id, sender_user_id, body, created_at;
+	`, chatID, userID, strings.TrimSpace(req.Body)).Scan(
+		&msg.ID, &msg.ChatID, &msg.SenderUserID, &msg.Body, &msg.CreatedAt,
+	)
+
+	if err != nil {
+		log.Printf("Failed creating message: %v", err)
+		writeError(w, http.StatusInternalServerError, "Failed to send message")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, msg)
 }
