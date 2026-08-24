@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/Navbar';
 import Button from '../../components/Button/Button';
-import { getMyProfile, updateProfile, uploadUserPhoto } from '../../api/users';
+import { getMyProfile, updateProfile, uploadUserPhoto, deleteAccount } from '../../api/users';
 import { getMyPets, uploadPetPhoto, createPet, updatePet, deletePet } from '../../api/pets';
 import { geocodeLocation, reverseGeocode, resolveLocationCoords, searchLocations, POPULAR_LOCATIONS } from '../../utils/locations';
 import './Profile.css';
@@ -32,6 +32,8 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'pets' | 'privacy'
   const [selectedPetIndex, setSelectedPetIndex] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [showInterestsModal, setShowInterestsModal] = useState(false);
   const [showTraitsModal, setShowTraitsModal] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
@@ -227,6 +229,20 @@ export default function Profile() {
     setSelectedPetIndex(0);
     setShowDeleteModal(false);
     setMessage({ type: 'success', text: 'Pet removed successfully' });
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await deleteAccount();
+      localStorage.clear();
+      navigate('/login');
+    } catch (err) {
+      console.error('Failed to delete account:', err);
+      setMessage({ type: 'danger', text: err.message || 'Failed to delete account. Please try again.' });
+      setDeletingAccount(false);
+      setShowDeleteAccountModal(false);
+    }
   };
 
   const handleToggleInterest = (interest) => {
@@ -950,7 +966,9 @@ export default function Profile() {
                   <div className="profile-privacy__card profile-privacy__card--danger">
                     <h3>Delete Account</h3>
                     <p>Permanently remove your profile, pet entries, and match history.</p>
-                    <Button variant="danger" size="sm">Delete My Account</Button>
+                    <Button variant="danger" size="sm" onClick={() => setShowDeleteAccountModal(true)}>
+                      Delete My Account
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -973,6 +991,34 @@ export default function Profile() {
               </Button>
               <Button variant="danger" onClick={handleConfirmDeletePet}>
                 Confirm Remove
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Delete Account */}
+      {showDeleteAccountModal && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <h3 className="modal-title">Delete Account</h3>
+            <p className="modal-body">
+              Are you sure you want to permanently delete your account? This action cannot be undone and all your pets, photos, and messages will be removed.
+            </p>
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                onClick={() => setShowDeleteAccountModal(false)}
+                disabled={deletingAccount}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleConfirmDeleteAccount}
+                loading={deletingAccount}
+              >
+                Permanently Delete
               </Button>
             </div>
           </div>
