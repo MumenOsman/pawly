@@ -27,6 +27,7 @@
 /* ============================================================
    COLOR TOKENS — Light Mode (Default)
    ============================================================ */
+/* Pawly Core Design Tokens */
 :root {
   /* --- Core Palette --- */
   --color-primary: #0D5C4D;          /* Forest Evergreen — headers, trust badges, active tabs */
