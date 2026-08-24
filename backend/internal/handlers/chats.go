@@ -221,6 +221,7 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SendMessage persists new chat messages in PostgreSQL with timestamps
 // SendMessage persists a message sent to a specific chat.
 // POST /chats/{id}/messages
 func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
