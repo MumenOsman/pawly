@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { register } from '../../api/auth';
+import { register, login } from '../../api/auth';
 import { updateProfile, uploadUserPhoto } from '../../api/users';
-import { createPet, uploadPetPhoto } from '../../api/pets';
+import { createPet, uploadPetPhoto, setCachedMyPets, saveSelectedPetIds } from '../../api/pets';
 import { geocodeLocation, reverseGeocode, searchLocations, POPULAR_LOCATIONS } from '../../utils/locations';
 import Button from '../../components/Button/Button';
 import './Register.css';
@@ -265,12 +265,25 @@ export default function Register() {
       // Resolve dynamic coordinates for any city/town typed
       const coords = await geocodeLocation(location.trim());
 
-      // 1. Create User Account & JWT Session
-      await register(email.trim(), password, {
-        owner_name: name.trim(),
-        username: username.trim(),
-        date_of_birth: dateOfBirth,
-      });
+      // 1. Create User Account & JWT Session (or login if session exists)
+      let registerRes;
+      try {
+        registerRes = await register(email.trim(), password, {
+          owner_name: name.trim(),
+          username: username.trim(),
+          date_of_birth: dateOfBirth,
+        });
+      } catch (regErr) {
+        if (regErr?.message && regErr.message.toLowerCase().includes('already registered')) {
+          try {
+            registerRes = await login(email.trim(), password);
+          } catch {
+            throw regErr;
+          }
+        } else {
+          throw regErr;
+        }
+      }
 
       // 2. Upload Owner Profile Photo if provided
       let ownerPhotoURL = '';
@@ -311,13 +324,39 @@ export default function Register() {
         pet_photo: '/paw-icon.svg',
       });
 
+      let finalPetPhoto = '/paw-icon.svg';
       // 5. Upload Pet Photo if local file provided
       if (petPhotoFile && petRes?.id) {
         try {
-          await uploadPetPhoto(petRes.id, petPhotoFile);
+          const uploadPetRes = await uploadPetPhoto(petRes.id, petPhotoFile);
+          if (uploadPetRes?.url || uploadPetRes?.raw_url) {
+            finalPetPhoto = uploadPetRes.raw_url || uploadPetRes.url;
+          }
         } catch (uploadPetErr) {
           console.warn('Pet photo upload warning:', uploadPetErr);
         }
+      }
+
+      // Populate local cache so Navbar and Discover show pet photo immediately
+      if (petRes?.id) {
+        const fullPetObj = {
+          id: petRes.id,
+          owner_id: registerRes?.user_id || 0,
+          pet_name: petName.trim(),
+          animal_type: animalType.toLowerCase(),
+          breed: breed.trim(),
+          size: size.toLowerCase(),
+          pet_age: Number(petAge) || 0,
+          energy_level: energyLevel.toLowerCase(),
+          about_me: petAboutMe.trim() || 'Friendly pet looking for buddies!',
+          temperament: selectedTemperaments,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          pet_photo: finalPetPhoto,
+          photos: [finalPetPhoto],
+        };
+        setCachedMyPets([fullPetObj]);
+        saveSelectedPetIds([petRes.id]);
       }
 
       // 6. Registration complete — redirect to Discover
@@ -590,11 +629,13 @@ export default function Register() {
                   <img src={petPhotoPreview} alt="Pet preview" className="pet-photo-img" />
                 ) : (
                   <div className="pet-photo-placeholder">
-                    <span>Upload Pet Photo</span>
+                    <span>Add Photo</span>
                   </div>
                 )}
-                <label htmlFor="pet-photo-file-input" className="file-picker-overlay-btn">
-                  Choose Photo
+              </div>
+              <div className="pet-photo-info">
+                <label htmlFor="pet-photo-file-input" className="file-upload-btn">
+                  Upload Pet Photo
                 </label>
                 <input
                   id="pet-photo-file-input"
@@ -603,8 +644,8 @@ export default function Register() {
                   onChange={handlePetPhotoChange}
                   style={{ display: 'none' }}
                 />
+                <span className="file-upload-hint">Supports JPG, PNG or WEBP</span>
               </div>
-              <p className="upload-hint">Upload a clear photo of your pet.</p>
             </div>
 
             <div className="form-grid-2">
