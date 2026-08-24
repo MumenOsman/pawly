@@ -33,3 +33,17 @@ export function markAsRead(chatId) {
     method: 'POST',
   });
 }
+
+/**
+ * Send a chat message via HTTP REST.
+ *
+ * @param {number} chatId - Chat ID
+ * @param {string} body - Message text
+ */
+export function sendChatMessage(chatId, body) {
+  return apiFetch(`/chats/${chatId}/messages`, {
+    method: 'POST',
+    body: { body },
+  });
+}
+
