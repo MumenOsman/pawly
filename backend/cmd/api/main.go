@@ -183,6 +183,8 @@ func main() {
 	mux.HandleFunc("DELETE /pets/{id}", auth.Optional(h.DeletePet))
 	mux.HandleFunc("POST /me/photo", auth.Optional(h.UploadUserPhoto))
 	mux.HandleFunc("POST /pets/{id}/photo", auth.Optional(h.UploadPetPhoto))
+	mux.HandleFunc("DELETE /me", auth.Optional(h.DeleteAccount))
+	mux.HandleFunc("DELETE /users/me", auth.Optional(h.DeleteAccount))
 
 	// Static file serving for uploads
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
@@ -207,6 +209,7 @@ func main() {
 	// Chats
 	mux.HandleFunc("GET /chats", auth.Optional(h.GetChats))
 	mux.HandleFunc("GET /chats/{id}/messages", auth.Optional(h.GetMessages))
+	mux.HandleFunc("POST /chats/{id}/messages", auth.Optional(h.SendMessage))
 
 	// Debug & test consoles (public — development only)
 	mux.HandleFunc("GET /test", h.TestPage)
