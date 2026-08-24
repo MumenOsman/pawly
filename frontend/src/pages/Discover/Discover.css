@@ -58,6 +58,7 @@
 }
 
 /* --- Map Empty Overlay Banner --- */
+/* Top floating banner on map when no pets are within selected radius */
 .discover__map-overlay-banner {
   position: absolute;
   top: 16px;
