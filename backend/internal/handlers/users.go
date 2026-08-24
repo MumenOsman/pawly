@@ -540,6 +540,7 @@ func (h *Handler) fetchUserBio(userID int) (*userBio, error) {
 	return bio, nil
 }
 
+// DeleteAccount cascades deletions across all user relations in PostgreSQL
 // DeleteAccount deletes the authenticated user and all related data (cascaded by foreign keys).
 // DELETE /me
 func (h *Handler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
