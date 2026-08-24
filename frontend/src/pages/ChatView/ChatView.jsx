@@ -13,9 +13,20 @@ import StatusBadge from '../../components/StatusBadge/StatusBadge';
 import MatchRing from '../../components/MatchRing/MatchRing';
 import Button from '../../components/Button/Button';
 import { useWebSocket } from '../../contexts/WebSocketContext';
-import { getChats, getMessages, markAsRead } from '../../api/chats';
+import { getChats, getMessages, markAsRead, sendChatMessage } from '../../api/chats';
 import { getMyProfile } from '../../api/users';
 import './ChatView.css';
+
+const getFullPhotoUrl = (url, fallback = '/placeholder-user.svg') => {
+  if (!url) return fallback;
+  if (url.startsWith('/uploads')) {
+    return `http://localhost:3000${url}`;
+  }
+  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('/')) {
+    return url;
+  }
+  return fallback;
+};
 
 const formatMessageTime = (dateStr) => {
   if (!dateStr) return '';
@@ -74,6 +85,7 @@ export default function ChatView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const { sendMessage, sendTyping, onMessage, getTypingUsers, setTotalUnreadCount } = useWebSocket();
 
   const [chats, setChats] = useState([]);
@@ -91,7 +103,7 @@ export default function ChatView() {
         if (prof && prof.id) {
           setCurrentUserId(prof.id);
         }
-      } catch {}
+      } catch { }
     }
     loadMyProfile();
   }, []);
@@ -102,7 +114,7 @@ export default function ChatView() {
     if (chatId === 'welcome') {
       try {
         localStorage.setItem('pawly_welcome_viewed', 'true');
-      } catch {}
+      } catch { }
       setTotalUnreadCount(0);
       return;
     }
@@ -135,7 +147,7 @@ export default function ChatView() {
           setActiveChatId('welcome');
           try {
             localStorage.setItem('pawly_welcome_viewed', 'true');
-          } catch {}
+          } catch { }
           setTotalUnreadCount(0);
         }
       } catch {
@@ -143,7 +155,7 @@ export default function ChatView() {
         setActiveChatId('welcome');
         try {
           localStorage.setItem('pawly_welcome_viewed', 'true');
-        } catch {}
+        } catch { }
         setTotalUnreadCount(0);
       } finally {
         setLoading(false);
@@ -168,7 +180,7 @@ export default function ChatView() {
       try {
         const msgs = await getMessages(activeChatId);
         setMessages(Array.isArray(msgs) ? msgs : (msgs?.messages || []));
-        await markAsRead(activeChatId).catch(() => {});
+        await markAsRead(activeChatId).catch(() => { });
       } catch {
         setMessages([]);
       }
@@ -176,20 +188,55 @@ export default function ChatView() {
     loadChatMessages();
   }, [activeChatId]);
 
-  // 3. Auto-scroll message stream
+  // Reorder chats dynamically so the most recently active chat rises to the top
+  const updateChatListWithLatestMessage = useCallback((chatId, text, timeStr) => {
+    setChats((prevChats) => {
+      const chatIndex = prevChats.findIndex((c) => String(c.id) === String(chatId));
+      if (chatIndex === -1) return prevChats;
+      const targetChat = prevChats[chatIndex];
+      const updatedChat = {
+        ...targetChat,
+        last_message: {
+          body: text,
+          time: timeStr || new Date().toISOString(),
+        },
+      };
+      const restChats = prevChats.filter((_, idx) => idx !== chatIndex);
+      return [updatedChat, ...restChats];
+    });
+  }, []);
+
+  // Robust scroll to bottom for message stream
+  const scrollToBottom = useCallback((instant = false) => {
+    requestAnimationFrame(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: instant ? 'auto' : 'smooth' });
+      }
+    });
+  }, []);
+
+  // 3. Auto-scroll message stream to the bottom whenever messages change or active chat changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    scrollToBottom(true);
+    const timer = setTimeout(() => scrollToBottom(true), 60);
+    return () => clearTimeout(timer);
+  }, [messages, activeChatId, scrollToBottom]);
 
   // 4. WebSocket real-time listener
   useEffect(() => {
     const unsubscribe = onMessage('message', (payload) => {
-      if (String(payload.chat_id) === String(activeChatId)) {
-        setMessages((prev) => [...prev, payload]);
+      if (payload && payload.chat_id) {
+        updateChatListWithLatestMessage(payload.chat_id, payload.body, payload.created_at);
+        if (String(payload.chat_id) === String(activeChatId)) {
+          setMessages((prev) => [...prev, payload]);
+        }
       }
     });
     return unsubscribe;
-  }, [activeChatId, onMessage]);
+  }, [activeChatId, onMessage, updateChatListWithLatestMessage]);
 
   const displayChats = chats.length > 0 ? chats : [WELCOME_CHAT];
   const activeChat = displayChats.find((c) => String(c.id) === String(activeChatId)) || displayChats[0];
@@ -210,23 +257,36 @@ export default function ChatView() {
     }
   };
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim() || !activeChatId) return;
 
+    const messageText = input.trim();
+    setInput('');
+
+    const tempId = Date.now();
     const newMsg = {
-      id: Date.now(),
+      id: tempId,
       chat_id: activeChatId,
       sender_user_id: currentUserId,
-      body: input.trim(),
+      body: messageText,
       created_at: new Date().toISOString(),
     };
 
-    if (activeChatId !== 'welcome') {
-      sendMessage(activeChatId, input.trim());
-    }
     setMessages((prev) => [...prev, newMsg]);
-    setInput('');
+    updateChatListWithLatestMessage(activeChatId, messageText);
+
+    if (activeChatId !== 'welcome') {
+      sendMessage(activeChatId, messageText);
+      try {
+        const saved = await sendChatMessage(activeChatId, messageText);
+        if (saved && saved.id) {
+          setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+        }
+      } catch (err) {
+        console.warn('Failed persisting message to database:', err);
+      }
+    }
   };
 
   const filteredChats = displayChats.filter((c) => (filter === 'unread' ? c.unread_count > 0 : true));
@@ -346,7 +406,7 @@ export default function ChatView() {
                   </div>
 
                   {/* Messages Stream */}
-                  <div className="chat-mid-messages">
+                  <div className="chat-mid-messages" ref={messagesContainerRef}>
                     {messages.map((msg) => {
                       const isMe = Number(msg.sender_user_id) === Number(currentUserId);
                       return (
@@ -454,7 +514,7 @@ export default function ChatView() {
                     <div className="in-place-owner-section">
                       <div className="in-place-owner-header">
                         <img
-                          src={activeChat.other_user?.owner_photo || '/placeholder-user.svg'}
+                          src={getFullPhotoUrl(activeChat.other_user?.owner_photo, '/placeholder-user.svg')}
                           alt={activeChat.other_user?.owner_name || 'Owner'}
                           className="in-place-owner-avatar"
                           onError={(e) => {
@@ -509,5 +569,5 @@ function markChatAsReadInStorage(chatId) {
       const updated = [...read, chatId];
       localStorage.setItem('pawly_read_chats', JSON.stringify(updated));
     }
-  } catch {}
+  } catch { }
 }
