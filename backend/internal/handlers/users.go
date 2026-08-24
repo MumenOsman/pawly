@@ -539,3 +539,35 @@ func (h *Handler) fetchUserBio(userID int) (*userBio, error) {
 	}
 	return bio, nil
 }
+
+// DeleteAccount deletes the authenticated user and all related data (cascaded by foreign keys).
+// DELETE /me
+func (h *Handler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	if !h.requireDB(w) {
+		return
+	}
+
+	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	res, err := h.DB.Exec(`DELETE FROM users WHERE id = $1;`, userID)
+	if err != nil {
+		log.Printf("Failed deleting user %d: %v", userID, err)
+		writeError(w, http.StatusInternalServerError, "Failed to delete account")
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		writeError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Account deleted successfully",
+	})
+}
+
