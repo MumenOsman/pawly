@@ -57,6 +57,26 @@
   background: var(--color-primary-light);
 }
 
+/* --- Map Empty Overlay Banner --- */
+.discover__map-overlay-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  padding: 10px 22px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  text-align: center;
+  max-width: 90%;
+}
+
 /* --- Lower-Right Floating "My Location" Circular Button --- */
 .discover__my-location-btn {
   position: absolute;
