@@ -46,6 +46,7 @@ func Connect() (*sql.DB, error) {
 	}
 
 	// Connection pool settings
+	// Configure optimal pool limits for local development and test suites
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 
