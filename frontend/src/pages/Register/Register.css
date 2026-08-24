@@ -182,6 +182,7 @@
     text-align: center;
 }
 
+/* Circular 72px frame matching Step 1 owner photo */
 .pet-photo-preview-wrap {
     width: 72px;
     height: 72px;
