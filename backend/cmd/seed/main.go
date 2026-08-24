@@ -318,14 +318,21 @@ func main() {
 		ON CONFLICT (id) DO UPDATE SET 
 			email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, 
 			owner_name = EXCLUDED.owner_name, username = EXCLUDED.username, date_of_birth = EXCLUDED.date_of_birth;
+	`, passStr)
+	if err != nil {
+		log.Fatalf("Failed seeding Maria user: %v", err)
+	}
 
+	_, _ = tx.Exec(`
 		INSERT INTO user_profiles (user_id, owner_name, owner_photo, about_me, location, interests, date_of_birth)
 		VALUES (106, 'Maria Koskinen', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80', 'Hi! I am Maria, living in Töölö with Bella. We love weekend agility training and discovering new dog parks across Helsinki.', 'Helsinki (Töölö)', ARRAY['Dog Walking', 'Agility Training', 'Outdoor Hiking', 'Park Hangouts'], '1995-06-15')
 		ON CONFLICT (user_id) DO UPDATE SET
 			owner_name = EXCLUDED.owner_name, owner_photo = EXCLUDED.owner_photo,
 			about_me = EXCLUDED.about_me, location = EXCLUDED.location,
 			interests = EXCLUDED.interests, date_of_birth = EXCLUDED.date_of_birth;
+	`)
 
+	_, _ = tx.Exec(`
 		INSERT INTO pets (id, owner_id, pet_name, animal_type, breed, size, about_me, pet_photo, photos, energy_level, pet_age, temperament, latitude, longitude)
 		VALUES (106, 106, 'Bella', 'dog', 'Golden Retriever', 'large', 'Always ready for swimming, fetch games, and puppy playdates!', 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=500&auto=format&fit=crop&q=80', ARRAY['https://images.unsplash.com/photo-1552053831-71594a27632d?w=500&auto=format&fit=crop&q=80'], 'high', 2, ARRAY['Playful', 'Friendly', 'Energetic'], 60.1812, 24.9220)
 		ON CONFLICT (id) DO UPDATE SET
@@ -333,10 +340,7 @@ func main() {
 			size = EXCLUDED.size, about_me = EXCLUDED.about_me, pet_photo = EXCLUDED.pet_photo,
 			photos = EXCLUDED.photos, energy_level = EXCLUDED.energy_level, pet_age = EXCLUDED.pet_age,
 			temperament = EXCLUDED.temperament, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
-	`, passStr)
-	if err != nil {
-		log.Fatalf("❌ Failed seeding Maria: %v", err)
-	}
+	`)
 
 	// 2. Insert Aino Virtanen (110)
 	_, err = tx.Exec(`
@@ -345,14 +349,21 @@ func main() {
 		ON CONFLICT (id) DO UPDATE SET 
 			email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, 
 			owner_name = EXCLUDED.owner_name, username = EXCLUDED.username, date_of_birth = EXCLUDED.date_of_birth;
+	`, passStr)
+	if err != nil {
+		log.Fatalf("Failed seeding Aino user: %v", err)
+	}
 
+	_, _ = tx.Exec(`
 		INSERT INTO user_profiles (user_id, owner_name, owner_photo, about_me, location, interests, date_of_birth)
 		VALUES (110, 'Aino Virtanen', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80', 'Architect living in Kallio. Milo is my chill companion on daily cafe walks and photography strolls.', 'Helsinki (Kallio)', ARRAY['Park Hangouts', 'Pet Photography', 'Pet Cafes', 'Camping'], '1998-04-12')
 		ON CONFLICT (user_id) DO UPDATE SET
 			owner_name = EXCLUDED.owner_name, owner_photo = EXCLUDED.owner_photo,
 			about_me = EXCLUDED.about_me, location = EXCLUDED.location,
 			interests = EXCLUDED.interests, date_of_birth = EXCLUDED.date_of_birth;
+	`)
 
+	_, _ = tx.Exec(`
 		INSERT INTO pets (id, owner_id, pet_name, animal_type, breed, size, about_me, pet_photo, photos, energy_level, pet_age, temperament, latitude, longitude)
 		VALUES (110, 110, 'Milo', 'dog', 'French Bulldog', 'small', 'Low energy snuggler who enjoys short park walks and sunbathing.', 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=500&auto=format&fit=crop&q=80', ARRAY['https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=500&auto=format&fit=crop&q=80'], 'low', 3, ARRAY['Calm', 'Gentle', 'Couch Potato'], 60.1873, 24.9535)
 		ON CONFLICT (id) DO UPDATE SET
@@ -360,10 +371,7 @@ func main() {
 			size = EXCLUDED.size, about_me = EXCLUDED.about_me, pet_photo = EXCLUDED.pet_photo,
 			photos = EXCLUDED.photos, energy_level = EXCLUDED.energy_level, pet_age = EXCLUDED.pet_age,
 			temperament = EXCLUDED.temperament, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
-	`, passStr)
-	if err != nil {
-		log.Fatalf("❌ Failed seeding Aino: %v", err)
-	}
+	`)
 
 	// 3. Insert Mikko Korhonen (111)
 	_, err = tx.Exec(`
@@ -372,14 +380,21 @@ func main() {
 		ON CONFLICT (id) DO UPDATE SET 
 			email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, 
 			owner_name = EXCLUDED.owner_name, username = EXCLUDED.username, date_of_birth = EXCLUDED.date_of_birth;
+	`, passStr)
+	if err != nil {
+		log.Fatalf("Failed seeding Mikko user: %v", err)
+	}
 
+	_, _ = tx.Exec(`
 		INSERT INTO user_profiles (user_id, owner_name, owner_photo, about_me, location, interests, date_of_birth)
 		VALUES (111, 'Mikko Korhonen', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80', 'Software engineer in Tapiola. Luna and I are big fans of coastal trails, frisbee sessions, and trick training.', 'Espoo (Tapiola)', ARRAY['Beach Walks', 'Puppy Socialization', 'Outdoor Hiking', 'Trick Training'], '1991-09-20')
 		ON CONFLICT (user_id) DO UPDATE SET
 			owner_name = EXCLUDED.owner_name, owner_photo = EXCLUDED.owner_photo,
 			about_me = EXCLUDED.about_me, location = EXCLUDED.location,
 			interests = EXCLUDED.interests, date_of_birth = EXCLUDED.date_of_birth;
+	`)
 
+	_, _ = tx.Exec(`
 		INSERT INTO pets (id, owner_id, pet_name, animal_type, breed, size, about_me, pet_photo, photos, energy_level, pet_age, temperament, latitude, longitude)
 		VALUES (111, 111, 'Luna', 'dog', 'Border Collie', 'medium', 'Super energetic agility star! Loves Frisbee and mental challenge games.', 'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=500&auto=format&fit=crop&q=80', ARRAY['https://images.unsplash.com/photo-1517849845537-4d257902454a?w=500&auto=format&fit=crop&q=80'], 'high', 4, ARRAY['Energetic', 'Intelligent', 'Playful'], 60.1770, 24.8055)
 		ON CONFLICT (id) DO UPDATE SET
@@ -387,10 +402,7 @@ func main() {
 			size = EXCLUDED.size, about_me = EXCLUDED.about_me, pet_photo = EXCLUDED.pet_photo,
 			photos = EXCLUDED.photos, energy_level = EXCLUDED.energy_level, pet_age = EXCLUDED.pet_age,
 			temperament = EXCLUDED.temperament, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
-	`, passStr)
-	if err != nil {
-		log.Fatalf("❌ Failed seeding Mikko: %v", err)
-	}
+	`)
 
 	// 4. Inter-user Connections between Maria (106), Aino (110), Mikko (111)
 	_, _ = tx.Exec(`
