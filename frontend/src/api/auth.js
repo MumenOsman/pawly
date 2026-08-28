@@ -23,6 +23,7 @@ export async function register(email, password, extraData = {}) {
   });
   if (data.token) {
     localStorage.setItem(TOKEN_KEY, data.token);
+    window.dispatchEvent(new Event('pawly_auth_changed'));
   }
   return data;
 }
@@ -40,6 +41,7 @@ export async function login(email, password) {
   });
   if (data.token) {
     localStorage.setItem(TOKEN_KEY, data.token);
+    window.dispatchEvent(new Event('pawly_auth_changed'));
   }
   return data;
 }
@@ -50,6 +52,7 @@ export async function login(email, password) {
  */
 export function logout() {
   localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event('pawly_auth_changed'));
 }
 
 /**

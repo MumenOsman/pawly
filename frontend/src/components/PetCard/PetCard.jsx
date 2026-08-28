@@ -7,6 +7,7 @@
 import { Link } from 'react-router-dom';
 import MatchRing from '../MatchRing/MatchRing';
 import Button from '../Button/Button';
+import { getFullPhotoUrl, getDefaultPetPhoto } from '../../utils/petPhotos';
 import './PetCard.css';
 
 export default function PetCard({
@@ -21,8 +22,9 @@ export default function PetCard({
   showActions = true,
   compact = false,
 }) {
-  // Default placeholder if no photo
-  const photoUrl = pet.pet_photo || '/placeholder-pet.svg';
+  const fallbackPetPhoto = getDefaultPetPhoto(pet?.id, pet?.animal_type, pet?.pet_name);
+  const photoUrl = getFullPhotoUrl(pet?.pet_photo, fallbackPetPhoto);
+  const ownerPhotoUrl = getFullPhotoUrl(pet?.owner_photo, '/placeholder-user.svg');
 
   // Pick badge color based on animal type
   const getTypeColor = (type) => {
@@ -62,9 +64,7 @@ export default function PetCard({
             loading="lazy"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = pet.animal_type === 'cat'
-                ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=80'
-                : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80';
+              e.target.src = fallbackPetPhoto;
             }}
           />
           {matchPercentage !== undefined && (
@@ -75,12 +75,12 @@ export default function PetCard({
           {pet.owner_name && (
             <div className="pet-card__owner-chip">
               <img
-                src={pet.owner_photo || '/placeholder-user.svg'}
+                src={ownerPhotoUrl}
                 alt={pet.owner_name}
                 className="pet-card__owner-img"
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = 'https://i.pravatar.cc/150?u=pawly_fallback';
+                  e.target.src = '/placeholder-user.svg';
                 }}
               />
               <span>Owner: {pet.owner_name}</span>

@@ -147,8 +147,6 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 		  )
 		  AND p.id NOT IN (
 			SELECT receiver_pet_id FROM connection_requests WHERE sender_pet_id IN (SELECT id FROM pets WHERE owner_id = $1)
-			UNION
-			SELECT sender_pet_id FROM connection_requests WHERE receiver_pet_id IN (SELECT id FROM pets WHERE owner_id = $1)
 		  )
 		LIMIT 150;
 	`

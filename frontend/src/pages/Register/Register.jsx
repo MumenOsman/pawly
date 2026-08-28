@@ -262,8 +262,10 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Resolve dynamic coordinates for any city/town typed
-      const coords = await geocodeLocation(location.trim());
+      // Use exact coordinates from dropdown selection if available, or dynamically geocode typed location
+      const coords = (selectedCoords?.lat && selectedCoords?.lng)
+        ? selectedCoords
+        : await geocodeLocation(location.trim());
 
       // 1. Create User Account & JWT Session (or login if session exists)
       let registerRes;
@@ -272,6 +274,7 @@ export default function Register() {
           owner_name: name.trim(),
           username: username.trim(),
           date_of_birth: dateOfBirth,
+          location: location.trim(),
         });
       } catch (regErr) {
         if (regErr?.message && regErr.message.toLowerCase().includes('already registered')) {
@@ -358,6 +361,18 @@ export default function Register() {
         setCachedMyPets([fullPetObj]);
         saveSelectedPetIds([petRes.id]);
       }
+
+      // Cache user location for immediate map centering on Discover page
+      try {
+        localStorage.setItem(
+          'pawly_user_location',
+          JSON.stringify({
+            lat: coords.lat,
+            lng: coords.lng,
+            name: location.trim() || 'My Location',
+          })
+        );
+      } catch {}
 
       // 6. Registration complete — redirect to Discover
       navigate('/discover');

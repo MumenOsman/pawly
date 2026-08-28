@@ -21,11 +21,13 @@ import Settings from './pages/Settings/Settings';
 // Layout & Providers
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { WebSocketProvider } from './contexts/WebSocketContext';
+import MatchNotification from './components/MatchNotification/MatchNotification';
 
 function App() {
   return (
     <WebSocketProvider>
       <BrowserRouter>
+        <MatchNotification />
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />

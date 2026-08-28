@@ -11,6 +11,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { logout } from '../../api/auth';
 import { useWebSocket } from '../../contexts/WebSocketContext';
 import { getMyPets, getCachedMyPets, getSavedSelectedPetIds, saveSelectedPetIds } from '../../api/pets';
+import { getMyProfile } from '../../api/users';
 import './Navbar.css';
 
 const MAX_VISIBLE_PETS = 4;
@@ -50,10 +51,23 @@ export default function Navbar({
   const [showDropdown, setShowDropdown] = useState(false);
   const [showPetDrawer, setShowPetDrawer] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
   // Fallback internal pet fetching with local cache
   const [fetchedPets, setFetchedPets] = useState(() => getCachedMyPets());
   const [internalSelectedIds, setInternalSelectedIds] = useState(() => getSavedSelectedPetIds([]));
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const prof = await getMyProfile();
+        if (prof) {
+          setUserProfile(prof);
+        }
+      } catch {}
+    }
+    loadUser();
+  }, []);
 
   useEffect(() => {
     async function loadPets() {
@@ -119,9 +133,20 @@ export default function Navbar({
     }
   };
 
+  const [isSmallScreen, setIsSmallScreen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 768 : false));
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Keep stable pet order so clicking an avatar never causes layout shift/jumping
-  const visiblePets = activePets.slice(0, MAX_VISIBLE_PETS);
-  const overflowPets = activePets.slice(MAX_VISIBLE_PETS);
+  const maxVisible = isSmallScreen ? 2 : MAX_VISIBLE_PETS;
+  const visiblePets = activePets.slice(0, maxVisible);
+  const overflowPets = activePets.slice(maxVisible);
   const hasOverflow = overflowPets.length > 0;
 
   return (
@@ -254,9 +279,31 @@ export default function Navbar({
             className="navbar__icon-btn navbar__profile-btn"
             onClick={() => setShowDropdown(!showDropdown)}
             aria-label="Profile menu"
+            title={userProfile?.owner_name || 'Profile menu'}
             id="profile-menu-toggle"
           >
-            <svg className="navbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {userProfile?.owner_photo ? (
+              <img
+                src={getFullPhotoUrl(userProfile.owner_photo)}
+                alt={userProfile.owner_name || 'Profile'}
+                className="navbar__profile-img"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.style.display = 'none';
+                  const fallbackSvg = e.target.parentElement?.querySelector('.navbar__profile-svg-fallback');
+                  if (fallbackSvg) fallbackSvg.style.display = 'block';
+                }}
+              />
+            ) : null}
+            <svg
+              className={`navbar__icon navbar__profile-svg-fallback ${userProfile?.owner_photo ? 'navbar__profile-svg-fallback--hidden' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>

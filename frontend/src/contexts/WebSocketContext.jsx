@@ -24,6 +24,7 @@ export function WebSocketProvider({ children }) {
   const reconnectTimeoutRef = useRef(null);
   const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
   const listenersRef = useRef(new Map());
+  const handleMessageRef = useRef(null);
 
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -51,46 +52,71 @@ export function WebSocketProvider({ children }) {
    */
   const connect = useCallback(() => {
     const token = localStorage.getItem('pawly_token');
-    if (!token) return;
+    if (!token) {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+        setIsConnected(false);
+      }
+      return;
+    }
 
-    // Close existing connection
+    // Close existing connection if already open/connecting
     if (wsRef.current) {
+      if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+        return; // already connected or connecting
+      }
       wsRef.current.close();
     }
 
-    const ws = new WebSocket(`${WS_BASE_URL}/ws?token=${token}`);
+    try {
+      console.log('🔌 [Pawly WS] Connecting to:', `${WS_BASE_URL}/ws`);
+      const ws = new WebSocket(`${WS_BASE_URL}/ws?token=${token}`);
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
-    };
+      ws.onopen = () => {
+        console.log('✅ [Pawly WS] Connected successfully');
+        setIsConnected(true);
+        reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
+      };
 
-    ws.onclose = () => {
-      setIsConnected(false);
-      wsRef.current = null;
+      ws.onclose = (event) => {
+        console.log('⚠️ [Pawly WS] Connection closed (code: ' + event.code + ')');
+        setIsConnected(false);
+        wsRef.current = null;
 
-      // Auto-reconnect with exponential backoff
-      const delay = reconnectDelayRef.current;
-      reconnectTimeoutRef.current = setTimeout(() => {
-        reconnectDelayRef.current = Math.min(delay * 2, MAX_RECONNECT_DELAY);
-        connect();
-      }, delay);
-    };
+        // Auto-reconnect with exponential backoff if token is still present
+        if (localStorage.getItem('pawly_token')) {
+          const delay = reconnectDelayRef.current;
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectDelayRef.current = Math.min(delay * 2, MAX_RECONNECT_DELAY);
+            connect();
+          }, delay);
+        }
+      };
 
-    ws.onerror = () => {
-      // onclose will fire after onerror, triggering reconnect
-    };
+      ws.onerror = (err) => {
+        console.warn('❌ [Pawly WS] Error:', err);
+      };
 
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        handleMessage(payload);
-      } catch {
-        // Ignore malformed messages
-      }
-    };
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          console.log('📩 [Pawly WS] Received frame:', payload);
+          if (handleMessageRef.current) {
+            handleMessageRef.current(payload);
+          }
+        } catch {
+          // Ignore malformed messages
+        }
+      };
 
-    wsRef.current = ws;
+      wsRef.current = ws;
+    } catch (e) {
+      console.error('Failed to instantiate WebSocket:', e);
+    }
   }, []);
 
   /**
@@ -248,11 +274,26 @@ export function WebSocketProvider({ children }) {
     return typingUsers.get(chatId) || new Set();
   }, [typingUsers]);
 
-  // Connect on mount, disconnect on unmount
+  // Always maintain latest handleMessage in ref
+  useEffect(() => {
+    handleMessageRef.current = handleMessage;
+  }, [handleMessage]);
+
+  // Connect on mount, disconnect on unmount, and reconnect when auth changes
   useEffect(() => {
     connect();
 
+    const handleAuthChange = () => {
+      connect();
+    };
+
+    window.addEventListener('pawly_auth_changed', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+
     return () => {
+      window.removeEventListener('pawly_auth_changed', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

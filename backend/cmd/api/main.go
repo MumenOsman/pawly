@@ -11,6 +11,7 @@ import (
 	"match-me/internal/database"
 	"match-me/internal/handlers"
 	"match-me/internal/middleware"
+	"match-me/internal/ws"
 )
 
 func main() {
@@ -158,12 +159,19 @@ func main() {
 		`)
 	}
 
+	// --- WebSocket Hub ---
+	hub := ws.NewHub()
+	go hub.Run()
+
 	// --- Create handlers ---
-	h := handlers.New(db, jwtSecret)
+	h := handlers.New(db, jwtSecret, hub)
 	auth := middleware.NewAuth(jwtSecret)
 
 	// --- Setup routes ---
 	mux := http.NewServeMux()
+
+	// WebSocket endpoint
+	mux.HandleFunc("GET /ws", h.HandleWebSocket)
 
 	// Health check (public)
 	mux.HandleFunc("GET /health", h.Health)

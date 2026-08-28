@@ -188,6 +188,16 @@ export default function Profile() {
         longitude: coords.lng,
       };
       await updateProfile(payload);
+      try {
+        localStorage.setItem(
+          'pawly_user_location',
+          JSON.stringify({
+            lat: coords.lat,
+            lng: coords.lng,
+            name: profile.location || 'My Location',
+          })
+        );
+      } catch {}
       setMessage({ type: 'success', text: 'Changes saved' });
     } catch (err) {
       setMessage({ type: 'danger', text: err.message || 'Failed to save changes' });

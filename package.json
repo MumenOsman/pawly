@@ -1,0 +1,13 @@
+{
+  "name": "pawly-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pawly - Location-based pet social network",
+  "scripts": {
+    "start": "node start.js",
+    "dev": "node start.js",
+    "server": "cd backend && go run cmd/api/main.go",
+    "client": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend"
+  }
+}

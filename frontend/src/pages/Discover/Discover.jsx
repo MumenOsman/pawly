@@ -20,7 +20,8 @@ import { loadRecommendationCards, dismissRecommendation } from '../../api/recomm
 import { sendConnectionRequest } from '../../api/connections';
 import { getMyPets, getCachedMyPets, getSavedSelectedPetIds, saveSelectedPetIds } from '../../api/pets';
 import { getMyProfile } from '../../api/users';
-import { resolveLocationCoords } from '../../utils/locations';
+import { geocodeLocation, resolveLocationCoords } from '../../utils/locations';
+import { getFullPhotoUrl, getDefaultPetPhoto } from '../../utils/petPhotos';
 import './Discover.css';
 
 /** Floating "My Location" button inside Leaflet map */
@@ -53,13 +54,14 @@ function RecenterMapButton({ userLocation }) {
 }
 
 // Custom Leaflet circular pet photo marker
-const createCustomPetMarker = (photoUrl, petName, isSelected = false) => {
-  const url = photoUrl || '/placeholder-pet.svg';
+const createCustomPetMarker = (photoUrl, petName, isSelected = false, petId = 0, animalType = 'dog') => {
+  const fallback = getDefaultPetPhoto(petId, animalType, petName);
+  const url = getFullPhotoUrl(photoUrl, fallback);
   return L.divIcon({
     className: `custom-pet-map-marker ${isSelected ? 'custom-pet-map-marker--active' : ''}`,
     html: `
       <div class="map-marker-pin ${isSelected ? 'map-marker-pin--active' : ''}">
-        <img src="${url}" alt="${petName}" class="map-marker-img" />
+        <img src="${url}" alt="${petName || 'Pet'}" class="map-marker-img" onerror="this.onerror=null;this.src='${fallback}';" />
       </div>
     `,
     iconSize: [44, 44],
@@ -82,6 +84,43 @@ const createClusterMarker = (count) => {
 // Helsinki default center
 const DEFAULT_CENTER = [60.1699, 24.9384];
 const DEFAULT_ZOOM = 12;
+
+function getInitialUserLocation() {
+  try {
+    const stored = localStorage.getItem('pawly_user_location');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed?.lat && parsed?.lng) return parsed;
+    }
+    const cachedPets = getCachedMyPets();
+    if (cachedPets && cachedPets[0]?.latitude && cachedPets[0]?.longitude) {
+      return {
+        lat: cachedPets[0].latitude,
+        lng: cachedPets[0].longitude,
+        name: cachedPets[0].pet_name || 'My Location',
+      };
+    }
+  } catch {}
+  return { lat: 60.1699, lng: 24.9384, name: 'Helsinki' };
+}
+
+/** Active Map Controller to synchronize map viewport with user's chosen location */
+function MapCenterSync({ userLocation }) {
+  const map = useMap();
+  const centeredKeyRef = useRef(null);
+
+  useEffect(() => {
+    if (userLocation?.lat && userLocation?.lng) {
+      const key = `${userLocation.lat.toFixed(4)},${userLocation.lng.toFixed(4)}`;
+      if (centeredKeyRef.current !== key) {
+        map.setView([userLocation.lat, userLocation.lng], 13);
+        centeredKeyRef.current = key;
+      }
+    }
+  }, [userLocation, map]);
+
+  return null;
+}
 
 /** Component to fit map bounds ONCE when new pet recommendations load */
 function MapBounds({ cards, resetBoundsKey }) {
@@ -180,7 +219,7 @@ export default function Discover() {
   // User's own pets for multi-pet discovery switcher
   const [myPets, setMyPets] = useState(() => getCachedMyPets());
   const [selectedPetIds, setSelectedPetIds] = useState(() => getSavedSelectedPetIds([]));
-  const [userLocation, setUserLocation] = useState({ lat: 60.1778, lng: 24.9247, name: 'Helsinki (Töölö)' });
+  const [userLocation, setUserLocation] = useState(getInitialUserLocation);
   const [maxDistance, setMaxDistance] = useState(15);
 
   // Fetch user's own pets & profile location on mount
@@ -195,10 +234,24 @@ export default function Discover() {
           const allIds = petsData.map((p) => p.id);
           setMyPets(petsData);
           setSelectedPetIds(getSavedSelectedPetIds(allIds));
-        }
-        if (profData && profData.location) {
-          const coords = resolveLocationCoords(profData.location);
-          setUserLocation({ ...coords, name: profData.location });
+          if (petsData[0]?.latitude && petsData[0]?.longitude) {
+            const loc = {
+              lat: petsData[0].latitude,
+              lng: petsData[0].longitude,
+              name: profData?.location || 'My Location',
+            };
+            setUserLocation(loc);
+            try {
+              localStorage.setItem('pawly_user_location', JSON.stringify(loc));
+            } catch {}
+          }
+        } else if (profData && profData.location) {
+          const coords = await geocodeLocation(profData.location);
+          const loc = { ...coords, name: profData.location };
+          setUserLocation(loc);
+          try {
+            localStorage.setItem('pawly_user_location', JSON.stringify(loc));
+          } catch {}
         }
       } catch {}
     }
@@ -238,8 +291,25 @@ export default function Discover() {
   };
 
   const handleConnect = async (petId) => {
+    const targetCard = cards.find((c) => (c.pet?.id || c.id) === petId);
+    const targetPet = targetCard?.pet || targetCard;
+    const myPet = myPets.find((p) => selectedPetIds.includes(p.id)) || myPets[0];
+
     try {
-      await sendConnectionRequest(petId);
+      const res = await sendConnectionRequest(petId);
+      if (res?.status === 'connected') {
+        window.dispatchEvent(
+          new CustomEvent('pawly-local-match', {
+            detail: {
+              chat_id: res?.chat_id,
+              pet1_name: myPet?.pet_name || 'Your Pet',
+              pet1_photo: myPet?.pet_photo,
+              pet2_name: targetPet?.pet_name || 'Pet Buddy',
+              pet2_photo: targetPet?.pet_photo,
+            },
+          })
+        );
+      }
     } catch {}
     setCards((prev) => prev.filter((c) => (c.pet?.id || c.id) !== petId));
     setSelectedPet((prev) => (prev && (prev.id === petId || prev.pet?.id === petId) ? null : prev));
@@ -322,14 +392,12 @@ export default function Discover() {
         {/* Hero Photo & MatchRing */}
         <div className="in-place-pet-detail__hero">
           <img
-            src={pet.pet_photo || '/placeholder-pet.svg'}
+            src={getFullPhotoUrl(pet.pet_photo, getDefaultPetPhoto(pet.id, pet.animal_type, pet.pet_name))}
             alt={pet.pet_name}
             className="in-place-pet-detail__photo"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = pet.animal_type === 'cat'
-                ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=80'
-                : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80';
+              e.target.src = getDefaultPetPhoto(pet.id, pet.animal_type, pet.pet_name);
             }}
           />
           <div className="in-place-pet-detail__ring">
@@ -374,7 +442,7 @@ export default function Discover() {
         <div className="in-place-owner-section">
           <div className="in-place-owner-header">
             <img
-              src={pet.owner_photo || '/placeholder-user.svg'}
+              src={getFullPhotoUrl(pet.owner_photo, '/placeholder-user.svg')}
               alt={ownerName}
               className="in-place-owner-avatar"
             />
@@ -395,7 +463,6 @@ export default function Discover() {
           </p>
 
           <div className="in-place-owner-badges">
-            <span className="in-place-badge in-place-badge--verified">✓ Verified user</span>
             <span className="in-place-badge">User since 2 years</span>
             <span className="in-place-badge">&lt; 4 km away</span>
             <span className="in-place-badge">100% response rate</span>
@@ -437,9 +504,10 @@ export default function Discover() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Bounds, FlyTo, and Recenter controllers */}
+        {/* Bounds, FlyTo, Recenter, and CenterSync controllers */}
         <MapBounds cards={cards} resetBoundsKey={selectedPetIds.join(',')} />
         <FlyToPet selectedPet={selectedPet} />
+        <MapCenterSync userLocation={userLocation} />
         <RecenterMapButton userLocation={userLocation} />
 
         {clusteredLocations.map((cluster) => {
@@ -448,7 +516,7 @@ export default function Discover() {
           const isSelected = selectedPet && selectedPet.id === mainPet.id;
 
           const markerIcon = isSingle
-            ? createCustomPetMarker(mainPet.pet_photo, mainPet.pet_name, isSelected)
+            ? createCustomPetMarker(mainPet.pet_photo, mainPet.pet_name, isSelected, mainPet.id, mainPet.animal_type)
             : createClusterMarker(cluster.pets.length);
 
           return (

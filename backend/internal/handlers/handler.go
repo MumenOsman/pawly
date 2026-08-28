@@ -7,19 +7,22 @@ import (
 	"net/http"
 
 	"match-me/internal/middleware"
+	"match-me/internal/ws"
 )
 
 // Handler holds shared dependencies for all HTTP handlers.
 type Handler struct {
 	DB        *sql.DB
 	JWTSecret []byte
+	Hub       *ws.Hub
 }
 
-// New creates a new Handler with the given database connection and JWT secret.
-func New(db *sql.DB, jwtSecret string) *Handler {
+// New creates a new Handler with the given database connection, JWT secret, and WebSocket hub.
+func New(db *sql.DB, jwtSecret string, hub *ws.Hub) *Handler {
 	return &Handler{
 		DB:        db,
 		JWTSecret: []byte(jwtSecret),
+		Hub:       hub,
 	}
 }
 

@@ -15,19 +15,8 @@ import Button from '../../components/Button/Button';
 import { useWebSocket } from '../../contexts/WebSocketContext';
 import { getChats, getMessages, markAsRead, sendChatMessage } from '../../api/chats';
 import { getMyProfile } from '../../api/users';
+import { getFullPhotoUrl, getDefaultPetPhoto } from '../../utils/petPhotos';
 import './ChatView.css';
-
-// Helper to prepend backend base URL for uploaded media assets
-  const getFullPhotoUrl = (url, fallback = '/placeholder-user.svg') => {
-  if (!url) return fallback;
-  if (url.startsWith('/uploads')) {
-    return `http://localhost:3000${url}`;
-  }
-  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('/')) {
-    return url;
-  }
-  return fallback;
-};
 
 const formatMessageTime = (dateStr) => {
   if (!dateStr) return '';
@@ -48,6 +37,19 @@ const formatMessageTime = (dateStr) => {
 
     const dateFormatted = d.toLocaleDateString([], { day: 'numeric', month: 'short' });
     return `${dateFormatted}, ${timeStr}`;
+  } catch {
+    return dateStr;
+  }
+};
+
+const formatMatchDateTime = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const dateFormatted = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${dateFormatted} at ${timeStr}`;
   } catch {
     return dateStr;
   }
@@ -87,7 +89,7 @@ export default function ChatView() {
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
-  const { sendMessage, sendTyping, onMessage, getTypingUsers, setTotalUnreadCount } = useWebSocket();
+  const { sendMessage, sendTyping, onMessage, getTypingUsers, setTotalUnreadCount, isConnected, reconnect } = useWebSocket();
 
   const [chats, setChats] = useState([]);
   const [filter, setFilter] = useState('all'); // 'all' | 'unread'
@@ -96,6 +98,19 @@ export default function ChatView() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(1);
+  const [showDrawer, setShowDrawer] = useState(false);
+
+  const displayChats = chats.length > 0 ? chats : [WELCOME_CHAT];
+  const activeChat = displayChats.find((c) => String(c.id) === String(activeChatId)) || displayChats[0];
+  const isPawly = String(activeChat.id) === 'welcome';
+  const isOtherTyping = activeChatId && activeChatId !== 'welcome' ? getTypingUsers(activeChatId).size > 0 : false;
+  const filteredChats = displayChats.filter((c) => (filter === 'unread' ? c.unread_count > 0 : true));
+
+  useEffect(() => {
+    if (!isConnected) {
+      reconnect();
+    }
+  }, [isConnected, reconnect]);
 
   useEffect(() => {
     async function loadMyProfile() {
@@ -221,12 +236,12 @@ export default function ChatView() {
     });
   }, []);
 
-  // 3. Auto-scroll message stream to the bottom whenever messages change or active chat changes
+  // 3. Auto-scroll message stream to the bottom whenever messages change, active chat changes, or typing starts
   useEffect(() => {
     scrollToBottom(true);
     const timer = setTimeout(() => scrollToBottom(true), 60);
     return () => clearTimeout(timer);
-  }, [messages, activeChatId, scrollToBottom]);
+  }, [messages, activeChatId, isOtherTyping, scrollToBottom]);
 
   // 4. WebSocket real-time listener
   useEffect(() => {
@@ -234,20 +249,23 @@ export default function ChatView() {
       if (payload && payload.chat_id) {
         updateChatListWithLatestMessage(payload.chat_id, payload.body, payload.created_at);
         if (String(payload.chat_id) === String(activeChatId)) {
-          setMessages((prev) => [...prev, payload]);
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === payload.id)) {
+              return prev;
+            }
+            return [...prev, payload];
+          });
+          markAsRead(payload.chat_id).catch(() => {});
         }
       }
     });
     return unsubscribe;
   }, [activeChatId, onMessage, updateChatListWithLatestMessage]);
 
-  const displayChats = chats.length > 0 ? chats : [WELCOME_CHAT];
-  const activeChat = displayChats.find((c) => String(c.id) === String(activeChatId)) || displayChats[0];
-  const isPawly = String(activeChat.id) === 'welcome';
-
   const handleSelectChat = (chatId) => {
     setActiveChatId(chatId);
     clearChatUnread(chatId);
+    setShowDrawer(false);
     if (chatId !== 'welcome') {
       navigate(`/chats/${chatId}`, { replace: true });
     }
@@ -292,9 +310,6 @@ export default function ChatView() {
     }
   };
 
-  const filteredChats = displayChats.filter((c) => (filter === 'unread' ? c.unread_count > 0 : true));
-  const isOtherTyping = activeChatId && activeChatId !== 'welcome' ? getTypingUsers(activeChatId).size > 0 : false;
-
   return (
     <div className="unified-chat-page" id="chat-page">
       <Navbar />
@@ -307,12 +322,31 @@ export default function ChatView() {
           </div>
         ) : (
           <div className="unified-chat-grid">
+            {/* Backdrop for sliding drawer on small screens */}
+            {showDrawer && (
+              <div
+                className="chat-drawer-backdrop"
+                onClick={() => setShowDrawer(false)}
+                aria-label="Close conversation list"
+              />
+            )}
+
             {/* ============================================================
-               LEFT COLUMN: Messages & Conversations List
+               LEFT COLUMN: Messages & Conversations List (Slides in on mobile)
                ============================================================ */}
-            <aside className="chat-left-col">
+            <aside className={`chat-left-col ${showDrawer ? 'chat-left-col--open' : ''}`}>
               <div className="chat-left-header">
-                <h2>Messages</h2>
+                <div className="chat-left-header__top">
+                  <h2>Messages</h2>
+                  <button
+                    type="button"
+                    className="chat-drawer-close-btn"
+                    onClick={() => setShowDrawer(false)}
+                    aria-label="Close messages drawer"
+                  >
+                    ✕
+                  </button>
+                </div>
                 <div className="chat-filter-tabs">
                   <button
                     className={`chat-filter-tab ${filter === 'all' ? 'chat-filter-tab--active' : ''}`}
@@ -333,6 +367,11 @@ export default function ChatView() {
                 {filteredChats.map((chat) => {
                   const isSelected = String(chat.id) === String(activeChatId);
                   const isPawlyChat = String(chat.id) === 'welcome';
+                  const fallbackChatPhoto = isPawlyChat
+                    ? '/paw-icon.svg'
+                    : getDefaultPetPhoto(chat.other_pet?.id, chat.other_pet?.animal_type, chat.other_pet?.pet_name);
+                  const chatPetPhoto = getFullPhotoUrl(chat.other_pet?.pet_photo, fallbackChatPhoto);
+
                   return (
                     <div
                       key={chat.id}
@@ -341,12 +380,12 @@ export default function ChatView() {
                     >
                       <div className="chat-list-item__avatar-wrap">
                         <img
-                          src={chat.other_pet?.pet_photo || '/paw-icon.svg'}
+                          src={chatPetPhoto}
                           alt={chat.other_pet?.pet_name}
                           className="chat-list-item__avatar"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = '/paw-icon.svg';
+                            e.target.src = fallbackChatPhoto;
                           }}
                         />
                         {!isPawlyChat && <StatusBadge isOnline={chat.is_online} size="sm" />}
@@ -384,13 +423,35 @@ export default function ChatView() {
                 <>
                   {/* Chat Header */}
                   <div className="chat-mid-header">
+                    <button
+                      type="button"
+                      className="chat-toggle-sidebar-btn"
+                      onClick={() => setShowDrawer((prev) => !prev)}
+                      aria-label="Toggle conversations list"
+                      title="View all conversations"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="4" y1="6" x2="20" y2="6"></line>
+                        <line x1="4" y1="12" x2="20" y2="12"></line>
+                        <line x1="4" y1="18" x2="20" y2="18"></line>
+                      </svg>
+                      <span>Chats</span>
+                    </button>
+
                     <img
-                      src={activeChat.other_pet?.pet_photo || '/paw-icon.svg'}
+                      src={getFullPhotoUrl(
+                        activeChat.other_pet?.pet_photo,
+                        isPawly
+                          ? '/paw-icon.svg'
+                          : getDefaultPetPhoto(activeChat.other_pet?.id, activeChat.other_pet?.animal_type, activeChat.other_pet?.pet_name)
+                      )}
                       alt={activeChat.other_pet?.pet_name}
                       className="chat-mid-header__avatar"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = '/paw-icon.svg';
+                        e.target.src = isPawly
+                          ? '/paw-icon.svg'
+                          : getDefaultPetPhoto(activeChat.other_pet?.id, activeChat.other_pet?.animal_type, activeChat.other_pet?.pet_name);
                       }}
                     />
                     <div>
@@ -411,6 +472,22 @@ export default function ChatView() {
                   {/* Messages Stream */}
                   <div className="chat-mid-messages" ref={messagesContainerRef}>
                     {messages.map((msg) => {
+                      const isSystem =
+                        msg.is_system ||
+                        msg.body?.startsWith('Matched! Say hi') ||
+                        msg.body?.includes('Matched! Say hi to set up a playdate!');
+
+                      if (isSystem) {
+                        return (
+                          <div key={msg.id} className="chat-system-notice">
+                            <div className="chat-system-notice__card">
+                              <p>{msg.body}</p>
+                              <span className="chat-system-notice__time">{formatMatchDateTime(msg.created_at)}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       const isMe = Number(msg.sender_user_id) === Number(currentUserId);
                       return (
                         <div
@@ -425,12 +502,19 @@ export default function ChatView() {
                       );
                     })}
 
-                    {isOtherTyping && (
-                      <div className="chat-typing-indicator">
-                        <span>{activeChat.other_pet?.pet_name} is typing...</span>
-                      </div>
-                    )}
                     <div ref={messagesEndRef} />
+                  </div>
+
+                  {/* Dedicated Typing Indicator Bar (Permanently above Input Bar) */}
+                  <div className={`chat-typing-status-bar ${isOtherTyping ? 'chat-typing-status-bar--visible' : ''}`}>
+                    <div className="chat-typing-dots">
+                      <span className="chat-typing-dot" />
+                      <span className="chat-typing-dot" />
+                      <span className="chat-typing-dot" />
+                    </div>
+                    <span className="chat-typing-text">
+                      <strong>{activeChat.other_pet?.pet_name || 'User'}</strong> is typing...
+                    </span>
                   </div>
 
                   {/* Message Input Bar */}
@@ -464,12 +548,19 @@ export default function ChatView() {
                   {/* Hero Photo & MatchRing */}
                   <div className="in-place-pet-detail__hero">
                     <img
-                      src={activeChat.other_pet?.pet_photo || '/placeholder-pet.svg'}
+                      src={getFullPhotoUrl(
+                        activeChat.other_pet?.pet_photo,
+                        isPawly
+                          ? '/paw-icon.svg'
+                          : getDefaultPetPhoto(activeChat.other_pet?.id, activeChat.other_pet?.animal_type, activeChat.other_pet?.pet_name)
+                      )}
                       alt={activeChat.other_pet?.pet_name}
                       className="in-place-pet-detail__photo"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = '/paw-icon.svg';
+                        e.target.src = isPawly
+                          ? '/paw-icon.svg'
+                          : getDefaultPetPhoto(activeChat.other_pet?.id, activeChat.other_pet?.animal_type, activeChat.other_pet?.pet_name);
                       }}
                     />
                     {!isPawly && (
@@ -541,7 +632,6 @@ export default function ChatView() {
                       )}
 
                       <div className="in-place-owner-badges">
-                        <span className="in-place-badge in-place-badge--verified">✓ Verified user</span>
                         <span className="in-place-badge">100% response rate</span>
                       </div>
                     </div>

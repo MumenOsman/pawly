@@ -213,6 +213,8 @@ func (h *Handler) CreatePet(w http.ResponseWriter, r *http.Request) {
 		EnergyLevel string   `json:"energy_level"`
 		PetAge      int      `json:"pet_age"`
 		Temperament []string `json:"temperament"`
+		Latitude    float64  `json:"latitude"`
+		Longitude   float64  `json:"longitude"`
 	}
 
 	if err := decodeJSON(r, &req); err != nil {
@@ -232,6 +234,13 @@ func (h *Handler) CreatePet(w http.ResponseWriter, r *http.Request) {
 		req.Temperament = []string{}
 	}
 
+	lat := req.Latitude
+	lng := req.Longitude
+	if lat == 0 && lng == 0 {
+		lat = 60.1699
+		lng = 24.9384
+	}
+
 	// Synchronize PostgreSQL sequence to avoid primary key collision
 	_, _ = h.DB.Exec(`SELECT setval('pets_id_seq', COALESCE((SELECT MAX(id) FROM pets), 1));`)
 
@@ -241,9 +250,9 @@ func (h *Handler) CreatePet(w http.ResponseWriter, r *http.Request) {
 	var newID int
 	err := h.DB.QueryRow(`
 		INSERT INTO pets (owner_id, pet_name, animal_type, breed, size, about_me, pet_photo, photos, energy_level, pet_age, temperament, latitude, longitude)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 60.1699, 24.9384)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id;
-	`, userID, req.PetName, req.AnimalType, req.Breed, req.Size, req.AboutMe, petPhoto, pq.Array(photos), req.EnergyLevel, req.PetAge, pq.Array(req.Temperament)).Scan(&newID)
+	`, userID, req.PetName, req.AnimalType, req.Breed, req.Size, req.AboutMe, petPhoto, pq.Array(photos), req.EnergyLevel, req.PetAge, pq.Array(req.Temperament), lat, lng).Scan(&newID)
 
 	if err != nil {
 		log.Printf("❌ Failed creating pet: %v", err)
@@ -251,7 +260,7 @@ func (h *Handler) CreatePet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{"id": newID, "pet_photo": petPhoto, "photos": photos, "message": "Pet created successfully"})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"id": newID, "pet_photo": petPhoto, "photos": photos, "latitude": lat, "longitude": lng, "message": "Pet created successfully"})
 }
 
 // UpdatePet updates an existing pet's details and photos.
@@ -284,6 +293,8 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 		PetAge      int      `json:"pet_age"`
 		Temperament []string `json:"temperament"`
 		Photos      []string `json:"photos"`
+		Latitude    float64  `json:"latitude"`
+		Longitude   float64  `json:"longitude"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -302,9 +313,11 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 		    energy_level = COALESCE(NULLIF($7, ''), energy_level),
 		    pet_age = CASE WHEN $8 > 0 THEN $8 ELSE pet_age END,
 		    temperament = CASE WHEN array_length($9::text[], 1) > 0 THEN $9::text[] ELSE temperament END,
-		    photos = CASE WHEN array_length($10::text[], 1) > 0 THEN $10::text[] ELSE photos END
-		WHERE id = $11 AND (owner_id = $12 OR $12 = 1);
-	`, req.PetName, req.AnimalType, req.Breed, req.Size, req.AboutMe, req.PetPhoto, req.EnergyLevel, req.PetAge, pq.Array(req.Temperament), pq.Array(req.Photos), petID, userID)
+		    photos = CASE WHEN array_length($10::text[], 1) > 0 THEN $10::text[] ELSE photos END,
+		    latitude = CASE WHEN $11 <> 0 THEN $11 ELSE latitude END,
+		    longitude = CASE WHEN $12 <> 0 THEN $12 ELSE longitude END
+		WHERE id = $13 AND (owner_id = $14 OR $14 = 1);
+	`, req.PetName, req.AnimalType, req.Breed, req.Size, req.AboutMe, req.PetPhoto, req.EnergyLevel, req.PetAge, pq.Array(req.Temperament), pq.Array(req.Photos), req.Latitude, req.Longitude, petID, userID)
 
 	if err != nil {
 		log.Printf("❌ Failed updating pet %d: %v", petID, err)

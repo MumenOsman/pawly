@@ -16,6 +16,7 @@ type registerRequest struct {
 	OwnerName   string `json:"owner_name"`
 	Username    string `json:"username"`
 	DateOfBirth string `json:"date_of_birth"`
+	Location    string `json:"location"`
 }
 
 // loginRequest is the expected JSON body for login.
@@ -79,11 +80,14 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Also create an empty profile row for the user
+	// Also create profile row for the user with provided location
 	_, _ = h.DB.Exec(
-		`INSERT INTO user_profiles (user_id, owner_name, date_of_birth) VALUES ($1, $2, $3) 
-		 ON CONFLICT (user_id) DO UPDATE SET owner_name = EXCLUDED.owner_name, date_of_birth = EXCLUDED.date_of_birth`,
-		userID, req.OwnerName, req.DateOfBirth,
+		`INSERT INTO user_profiles (user_id, owner_name, location, date_of_birth) VALUES ($1, $2, $3, $4) 
+		 ON CONFLICT (user_id) DO UPDATE SET 
+		   owner_name = EXCLUDED.owner_name, 
+		   location = CASE WHEN EXCLUDED.location <> '' THEN EXCLUDED.location ELSE user_profiles.location END,
+		   date_of_birth = EXCLUDED.date_of_birth`,
+		userID, req.OwnerName, req.Location, req.DateOfBirth,
 	)
 
 	// Generate JWT

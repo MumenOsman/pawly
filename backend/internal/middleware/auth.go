@@ -24,6 +24,31 @@ func NewAuth(secret string) *Auth {
 	return &Auth{Secret: []byte(secret)}
 }
 
+// ParseToken parses and validates a raw JWT string, returning the user_id on success.
+func (a *Auth) ParseToken(tokenStr string) (int, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return a.Secret, nil
+	})
+	if err != nil || !token.Valid {
+		return 0, jwt.ErrSignatureInvalid
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, jwt.ErrTokenInvalidClaims
+	}
+
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, jwt.ErrTokenInvalidClaims
+	}
+
+	return int(userIDFloat), nil
+}
+
 // Required is middleware that rejects requests without a valid JWT.
 // On success, it sets the user_id in the request context.
 func (a *Auth) Required(next http.HandlerFunc) http.HandlerFunc {

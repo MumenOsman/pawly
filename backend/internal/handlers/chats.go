@@ -131,7 +131,11 @@ func (h *Handler) GetChats(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		cs.IsOnline = true // default online status in dev
+		if h.Hub != nil {
+			cs.IsOnline = h.Hub.IsUserOnline(cs.OtherUser.ID)
+		} else {
+			cs.IsOnline = true // default online status in dev
+		}
 		if lastBody != "" {
 			timeStr := ""
 			if lastCreatedAt.Valid {
@@ -286,6 +290,18 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed creating message: %v", err)
 		writeError(w, http.StatusInternalServerError, "Failed to send message")
 		return
+	}
+
+	if h.Hub != nil {
+		wsMsg := map[string]interface{}{
+			"type":           "message",
+			"id":             msg.ID,
+			"chat_id":        msg.ChatID,
+			"sender_user_id": msg.SenderUserID,
+			"body":           msg.Body,
+			"created_at":     msg.CreatedAt.Format(time.RFC3339),
+		}
+		h.Hub.BroadcastToChat(h.DB, chatID, userID, wsMsg)
 	}
 
 	writeJSON(w, http.StatusCreated, msg)

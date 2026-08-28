@@ -371,6 +371,25 @@
   position: relative;
 }
 
+.navbar__profile-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  display: block;
+  transition: transform var(--transition-fast);
+}
+
+.navbar__profile-btn:hover .navbar__profile-img {
+  transform: scale(1.06);
+  border-color: #FFFFFF;
+}
+
+.navbar__profile-svg-fallback--hidden {
+  display: none !important;
+}
+
 .navbar__dropdown {
   position: absolute;
   top: calc(100% + var(--space-sm));
@@ -452,21 +471,70 @@
 }
 
 @media (max-width: 767px) {
+  .navbar {
+    padding: 0 var(--space-xs) 0 var(--space-sm);
+  }
+
+  .navbar__logo {
+    gap: 4px;
+  }
+
+  .navbar__logo-text {
+    font-size: 1.2rem;
+    letter-spacing: -0.3px;
+  }
+
+  /* Keep View Toggle (Lists/Both/Map or Discover button) visible on mobile */
+  .navbar__view-toggle {
+    display: flex;
+    padding: 2px;
+    gap: 2px;
+    margin: 0 4px;
+  }
+
+  .navbar__view-btn {
+    padding: 3px 7px;
+    font-size: 11px;
+    min-height: 26px;
+    border-radius: var(--radius-pill);
+  }
+
   .navbar__links {
     display: none;
   }
 
-  .navbar__profile-wrapper {
-    display: none;
+  .navbar__right {
+    gap: 3px;
   }
 
   .navbar__pet-selectors {
-    gap: 4px;
+    gap: 2px;
+    margin-right: 2px;
   }
 
   .navbar__pet-avatar-btn {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .navbar__pet-overflow-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+  }
+
+  .navbar__icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .navbar__profile-wrapper {
+    display: flex;
+  }
+
+  .navbar__profile-img {
+    width: 26px;
+    height: 26px;
   }
 }
 

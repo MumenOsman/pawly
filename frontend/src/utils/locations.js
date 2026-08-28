@@ -143,7 +143,35 @@ export async function geocodeLocation(locationName) {
     return coords;
   }
 
-  // 3. Dynamic OpenStreetMap Geocoding
+  // 3. Fast Geocoding via Photon (No CORS restrictions, global coverage)
+  try {
+    const cleanCity = query.split(',')[0].trim();
+    const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`;
+    const res = await fetch(photonUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.features?.[0]?.geometry?.coordinates) {
+        const [lng, lat] = data.features[0].geometry.coordinates;
+        const coords = { lat: Number(lat), lng: Number(lng) };
+        geoCache.set(lowerQuery, coords);
+        return coords;
+      }
+    }
+    if (cleanCity && cleanCity.toLowerCase() !== lowerQuery) {
+      const res2 = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(cleanCity)}&limit=1`);
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (data2?.features?.[0]?.geometry?.coordinates) {
+          const [lng, lat] = data2.features[0].geometry.coordinates;
+          const coords = { lat: Number(lat), lng: Number(lng) };
+          geoCache.set(lowerQuery, coords);
+          return coords;
+        }
+      }
+    }
+  } catch {}
+
+  // 4. OpenStreetMap Nominatim Fallback
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
     const response = await fetch(url, {
@@ -164,23 +192,8 @@ export async function geocodeLocation(locationName) {
       }
     }
   } catch (err) {
-    console.warn('Geocoding search failed:', err);
+    console.warn('Nominatim geocoding failed:', err);
   }
-
-  // 4. Photon Fallback
-  try {
-    const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`;
-    const res = await fetch(photonUrl);
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.features?.[0]?.geometry?.coordinates) {
-        const [lng, lat] = data.features[0].geometry.coordinates;
-        const coords = { lat, lng };
-        geoCache.set(lowerQuery, coords);
-        return coords;
-      }
-    }
-  } catch {}
 
   return { lat: 60.1699, lng: 24.9384 };
 }
