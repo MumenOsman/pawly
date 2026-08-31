@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/Navbar';
 import Button from '../../components/Button/Button';
-import { getMyProfile, updateProfile, uploadUserPhoto, deleteAccount } from '../../api/users';
-import { getMyPets, uploadPetPhoto, createPet, updatePet, deletePet } from '../../api/pets';
+import { getMyProfile, updateProfile, uploadUserPhoto, deleteUserPhoto, deleteAccount } from '../../api/users';
+import { getMyPets, uploadPetPhoto, deletePetPhoto, createPet, updatePet, deletePet } from '../../api/pets';
 import { geocodeLocation, reverseGeocode, resolveLocationCoords, searchLocations, POPULAR_LOCATIONS } from '../../utils/locations';
 import './Profile.css';
 
@@ -33,6 +33,7 @@ export default function Profile() {
   const [selectedPetIndex, setSelectedPetIndex] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(null); // { type: 'user' | 'pet', photoUrl?: string }
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showInterestsModal, setShowInterestsModal] = useState(false);
   const [showTraitsModal, setShowTraitsModal] = useState(false);
@@ -103,7 +104,7 @@ export default function Profile() {
           const formattedPets = petsData.map((p) => {
             const rawPhotos = p.photos && p.photos.length > 0 ? p.photos : (p.pet_photo ? [p.pet_photo] : []);
             const cleanPhotos = rawPhotos.map((url) => getFullPhotoUrl(url, '/paw-icon.svg'));
-            const mainPhoto = cleanPhotos[0] || '/paw-icon.svg';
+            const mainPhoto = p.pet_photo ? getFullPhotoUrl(p.pet_photo, '/paw-icon.svg') : (cleanPhotos[0] || '/paw-icon.svg');
 
             return {
               ...p,
@@ -221,9 +222,14 @@ export default function Profile() {
     setMessage(null);
     try {
       await updatePet(currentPet.id, currentPet);
+      // Update cached pets in localStorage
+      const updatedPets = pets.map((p, idx) => (idx === selectedPetIndex ? currentPet : p));
+      try {
+        localStorage.setItem('pawly_cached_my_pets', JSON.stringify(updatedPets));
+      } catch {}
       setMessage({ type: 'success', text: 'Changes saved' });
-    } catch {
-      setMessage({ type: 'success', text: 'Changes saved' });
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.message || 'Failed to save pet changes' });
     } finally {
       setSaving(false);
     }
@@ -292,14 +298,20 @@ export default function Profile() {
 
   const handleSetMainPhoto = async (photoUrl) => {
     if (!currentPet?.id) return;
+    const updatedPet = { ...currentPet, pet_photo: photoUrl };
     const updatedPets = pets.map((p, idx) =>
-      idx === selectedPetIndex ? { ...p, pet_photo: photoUrl } : p
+      idx === selectedPetIndex ? updatedPet : p
     );
     setPets(updatedPets);
     try {
+      localStorage.setItem('pawly_cached_my_pets', JSON.stringify(updatedPets));
+    } catch {}
+    try {
       await updatePet(currentPet.id, { pet_photo: photoUrl });
       setMessage({ type: 'success', text: 'Changes saved' });
-    } catch {}
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.message || 'Failed to update main photo' });
+    }
   };
 
   const handleUserPhotoUpload = async (e) => {
@@ -356,6 +368,36 @@ export default function Profile() {
       }
     } catch (err) {
       setMessage({ type: 'danger', text: err.message || 'Pet photo upload failed' });
+    }
+  };
+
+  const handleRemoveUserPhoto = async () => {
+    try {
+      await deleteUserPhoto();
+      setProfile((prev) => ({ ...prev, owner_photo: '' }));
+      setMessage({ type: 'success', text: 'Profile photo removed' });
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.message || 'Failed to remove photo' });
+    }
+  };
+
+  const handleRemovePetPhoto = async (photoUrl) => {
+    if (!currentPet?.id) return;
+    try {
+      await deletePetPhoto(currentPet.id, photoUrl);
+      const updatedPhotos = (currentPet.photos || []).filter((u) => u !== photoUrl);
+      const updatedMain = currentPet.pet_photo === photoUrl ? (updatedPhotos[0] || '/paw-icon.svg') : currentPet.pet_photo;
+      
+      const updatedPet = {
+        ...currentPet,
+        pet_photo: updatedMain,
+        photos: updatedPhotos.length > 0 ? updatedPhotos : ['/paw-icon.svg'],
+      };
+      
+      setPets((prev) => prev.map((p, idx) => (idx === selectedPetIndex ? updatedPet : p)));
+      setMessage({ type: 'success', text: 'Pet photo removed' });
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.message || 'Failed to remove pet photo' });
     }
   };
 
@@ -451,23 +493,40 @@ export default function Profile() {
         <div className="profile-page__container">
           {/* Left Navigation Sidebar */}
           <aside className="profile-page__sidebar">
-            <div
-              className="profile-page__avatar-wrapper"
-              onClick={() => document.getElementById('user-photo-input')?.click()}
-              title="Click to edit profile picture"
-            >
-              <img
-                src={profile.owner_photo || '/paw-icon.svg'}
-                alt={profile.owner_name}
-                className="profile-page__avatar"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = '/paw-icon.svg';
-                }}
-              />
-              <div className="profile-page__edit-photo-overlay">
-                <span>Edit Photo</span>
+            <div className="profile-page__avatar-wrapper">
+              <div
+                onClick={() => document.getElementById('user-photo-input')?.click()}
+                title="Click to edit profile picture"
+                style={{ cursor: 'pointer', position: 'relative' }}
+              >
+                <img
+                  src={profile.owner_photo || '/paw-icon.svg'}
+                  alt={profile.owner_name}
+                  className="profile-page__avatar"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/paw-icon.svg';
+                  }}
+                />
+                <div className="profile-page__edit-photo-overlay">
+                  <span>Edit Photo</span>
+                </div>
               </div>
+
+              {profile.owner_photo && !profile.owner_photo.includes('paw-icon.svg') && (
+                <button
+                  type="button"
+                  className="profile-avatar__delete-badge"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeletePhotoModal({ type: 'user' });
+                  }}
+                  title="Remove profile picture"
+                >
+                  ×
+                </button>
+              )}
+
               <input
                 type="file"
                 id="user-photo-input"
@@ -749,6 +808,12 @@ export default function Profile() {
                             <div
                               key={pIdx}
                               className={`pet-gallery__thumb-wrap ${isMain ? 'pet-gallery__thumb-wrap--main' : ''}`}
+                              onClick={() => {
+                                if (!isMain) {
+                                  handleSetMainPhoto(photo);
+                                }
+                              }}
+                              title={isMain ? 'Main pet image' : 'Click to set as main image'}
                             >
                               <img
                                 src={photo}
@@ -759,14 +824,19 @@ export default function Profile() {
                                   e.target.src = '/paw-icon.svg';
                                 }}
                               />
-                              <button
-                                type="button"
-                                className="pet-gallery__set-main-overlay"
-                                onClick={() => handleSetMainPhoto(photo)}
-                                title="Set as main image"
-                              >
-                                Set Main
-                              </button>
+                              {!photo.includes('paw-icon.svg') && (
+                                <button
+                                  type="button"
+                                  className="pet-gallery__delete-badge"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowDeletePhotoModal({ type: 'pet', photoUrl: photo });
+                                  }}
+                                  title="Remove this photo"
+                                >
+                                  ×
+                                </button>
+                              )}
                             </div>
                           );
                         })}
@@ -941,7 +1011,130 @@ export default function Profile() {
                     />
                   </div>
 
-                  <div className="profile-form__actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {/* Target Preferences Section for matching */}
+                  <div className="profile-form__field profile-form__field--full" style={{ marginTop: '16px', padding: '16px', background: 'var(--color-bg-secondary, rgba(255,255,255,0.04))', borderRadius: '12px', border: '1px solid var(--color-border, rgba(255,255,255,0.08))' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--color-text-primary)' }}>
+                      Match Preferences (Ideal Playmate)
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '14px' }}>
+                      Pick the perfect playdate criteria for your pet to find the most compatible buddies.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                      {/* Preferred Animal Types */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '6px' }}>Target Species</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {['dog', 'cat'].map((type) => {
+                            const isSelected = (currentPet?.preferred_animal_types || []).includes(type);
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => {
+                                  setPets((prev) =>
+                                    prev.map((p, idx) => {
+                                      if (idx !== selectedPetIndex) return p;
+                                      const current = p.preferred_animal_types || [];
+                                      const next = current.includes(type) ? current.filter((t) => t !== type) : [...current, type];
+                                      return { ...p, preferred_animal_types: next };
+                                    })
+                                  );
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.82rem',
+                                  border: isSelected ? '1px solid var(--color-primary, #6366f1)' : '1px solid var(--color-border, #444)',
+                                  background: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                  color: isSelected ? 'var(--color-primary, #6366f1)' : 'inherit',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {type.charAt(0).toUpperCase() + type.slice(1)}s
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Preferred Sizes */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '6px' }}>Target Sizes</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {['small', 'medium', 'large'].map((sz) => {
+                            const isSelected = (currentPet?.preferred_sizes || []).includes(sz);
+                            return (
+                              <button
+                                key={sz}
+                                type="button"
+                                onClick={() => {
+                                  setPets((prev) =>
+                                    prev.map((p, idx) => {
+                                      if (idx !== selectedPetIndex) return p;
+                                      const current = p.preferred_sizes || [];
+                                      const next = current.includes(sz) ? current.filter((s) => s !== sz) : [...current, sz];
+                                      return { ...p, preferred_sizes: next };
+                                    })
+                                  );
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.82rem',
+                                  border: isSelected ? '1px solid var(--color-primary, #6366f1)' : '1px solid var(--color-border, #444)',
+                                  background: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                  color: isSelected ? 'var(--color-primary, #6366f1)' : 'inherit',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {sz.charAt(0).toUpperCase() + sz.slice(1)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Preferred Energy */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '6px' }}>Target Energy</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {['low', 'medium', 'high'].map((en) => {
+                            const isSelected = (currentPet?.preferred_energy_levels || []).includes(en);
+                            return (
+                              <button
+                                key={en}
+                                type="button"
+                                onClick={() => {
+                                  setPets((prev) =>
+                                    prev.map((p, idx) => {
+                                      if (idx !== selectedPetIndex) return p;
+                                      const current = p.preferred_energy_levels || [];
+                                      const next = current.includes(en) ? current.filter((e) => e !== en) : [...current, en];
+                                      return { ...p, preferred_energy_levels: next };
+                                    })
+                                  );
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.82rem',
+                                  border: isSelected ? '1px solid var(--color-primary, #6366f1)' : '1px solid var(--color-border, #444)',
+                                  background: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                  color: isSelected ? 'var(--color-primary, #6366f1)' : 'inherit',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {en.charAt(0).toUpperCase() + en.slice(1)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="profile-form__actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
                     {pets.length > 0 && currentPet ? (
                       <Button type="button" variant="danger" onClick={() => setShowDeleteModal(true)}>
                         Remove Pet
@@ -1000,6 +1193,40 @@ export default function Profile() {
                 Cancel
               </Button>
               <Button variant="danger" onClick={handleConfirmDeletePet}>
+                Confirm Remove
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Remove Photo */}
+      {showDeletePhotoModal && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <h3 className="modal-title">
+              {showDeletePhotoModal.type === 'user' ? 'Remove Profile Photo' : 'Remove Pet Photo'}
+            </h3>
+            <p className="modal-body">
+              {showDeletePhotoModal.type === 'user'
+                ? 'Are you sure you want to remove your profile picture?'
+                : 'Are you sure you want to remove this pet photo?'}
+            </p>
+            <div className="modal-actions">
+              <Button variant="secondary" onClick={() => setShowDeletePhotoModal(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={async () => {
+                  if (showDeletePhotoModal.type === 'user') {
+                    await handleRemoveUserPhoto();
+                  } else if (showDeletePhotoModal.type === 'pet') {
+                    await handleRemovePetPhoto(showDeletePhotoModal.photoUrl);
+                  }
+                  setShowDeletePhotoModal(null);
+                }}
+              >
                 Confirm Remove
               </Button>
             </div>

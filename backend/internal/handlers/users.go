@@ -97,28 +97,32 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	// Update user_profiles
 	_, err := h.DB.Exec(`
-		INSERT INTO user_profiles (user_id, owner_name, location, about_me, interests, owner_photo, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		INSERT INTO user_profiles (user_id, owner_name, location, about_me, interests, owner_photo, date_of_birth, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
 		ON CONFLICT (user_id) DO UPDATE 
 		SET owner_name = EXCLUDED.owner_name,
 		    location = EXCLUDED.location,
 		    about_me = EXCLUDED.about_me,
 		    interests = EXCLUDED.interests,
 		    owner_photo = CASE WHEN EXCLUDED.owner_photo <> '' THEN EXCLUDED.owner_photo ELSE user_profiles.owner_photo END,
+		    date_of_birth = EXCLUDED.date_of_birth,
 		    updated_at = NOW()
-	`, userID, req.OwnerName, req.Location, req.Bio, pq.Array(req.Interests), req.OwnerPhoto)
+	`, userID, req.OwnerName, req.Location, req.Bio, pq.Array(req.Interests), req.OwnerPhoto, req.DateOfBirth)
 	if err != nil {
 		log.Printf("❌ Failed updating user_profiles for user %d: %v", userID, err)
 		writeError(w, http.StatusInternalServerError, "failed to update profile")
 		return
 	}
 
-	// Update users table owner_name & username
+	// Update users table owner_name, username & date_of_birth
 	if req.OwnerName != "" {
 		_, _ = h.DB.Exec(`UPDATE users SET owner_name = $1 WHERE id = $2`, req.OwnerName, userID)
 	}
 	if req.Username != "" {
 		_, _ = h.DB.Exec(`UPDATE users SET username = $1 WHERE id = $2`, req.Username, userID)
+	}
+	if req.DateOfBirth != "" {
+		_, _ = h.DB.Exec(`UPDATE users SET date_of_birth = $1 WHERE id = $2`, req.DateOfBirth, userID)
 	}
 
 	// If coordinates were provided, update pets' coordinates too
@@ -147,13 +151,16 @@ func (h *Handler) GetMyPets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := h.DB.Query(`
-		SELECT id, owner_id, pet_name, animal_type, COALESCE(breed, ''), size, 
-		       COALESCE(about_me, ''), COALESCE(pet_photo, ''), energy_level, 
-		       COALESCE(pet_age, 0), COALESCE(temperament, '{}'), latitude, longitude,
-		       COALESCE(photos, '{}')
-		FROM pets 
-		WHERE owner_id = $1
-		ORDER BY id ASC
+		SELECT p.id, p.owner_id, p.pet_name, p.animal_type, COALESCE(p.breed, ''), p.size, 
+		       COALESCE(p.about_me, ''), COALESCE(p.pet_photo, ''), p.energy_level, 
+		       COALESCE(p.pet_age, 0), COALESCE(p.temperament, '{}'), p.latitude, p.longitude, 
+		       COALESCE(p.photos, '{}'),
+		       COALESCE(pp.preferred_sizes, '{}'), COALESCE(pp.preferred_animal_types, '{}'),
+		       COALESCE(pp.preferred_energy_levels, '{}'), COALESCE(pp.max_distance_km, 15.0)
+		FROM pets p
+		LEFT JOIN pet_preferences pp ON p.id = pp.pet_id
+		WHERE p.owner_id = $1
+		ORDER BY p.id ASC
 	`, userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Database error")
@@ -162,32 +169,42 @@ func (h *Handler) GetMyPets(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type petResp struct {
-		ID          int      `json:"id"`
-		OwnerID     int      `json:"owner_id"`
-		PetName     string   `json:"pet_name"`
-		AnimalType  string   `json:"animal_type"`
-		Breed       string   `json:"breed"`
-		Size        string   `json:"size"`
-		AboutMe     string   `json:"about_me"`
-		PetPhoto    string   `json:"pet_photo"`
-		EnergyLevel string   `json:"energy_level"`
-		PetAge      int      `json:"pet_age"`
-		Temperament []string `json:"temperament"`
-		Latitude    float64  `json:"latitude"`
-		Longitude   float64  `json:"longitude"`
-		Photos      []string `json:"photos"`
+		ID                    int      `json:"id"`
+		OwnerID               int      `json:"owner_id"`
+		PetName               string   `json:"pet_name"`
+		AnimalType            string   `json:"animal_type"`
+		Breed                 string   `json:"breed"`
+		Size                  string   `json:"size"`
+		AboutMe               string   `json:"about_me"`
+		PetPhoto              string   `json:"pet_photo"`
+		EnergyLevel           string   `json:"energy_level"`
+		PetAge                int      `json:"pet_age"`
+		Temperament           []string `json:"temperament"`
+		Latitude              float64  `json:"latitude"`
+		Longitude             float64  `json:"longitude"`
+		Photos                []string `json:"photos"`
+		PreferredSizes        []string `json:"preferred_sizes"`
+		PreferredAnimalTypes  []string `json:"preferred_animal_types"`
+		PreferredEnergyLevels []string `json:"preferred_energy_levels"`
+		MaxDistanceKM         float64  `json:"max_distance_km"`
 	}
 
 	pets := make([]petResp, 0)
 	for rows.Next() {
 		var p petResp
-		var temp, photos []string
+		var temp, photos, prefSizes, prefTypes, prefEnergies []string
+		var maxDist float64
 		if err := rows.Scan(
 			&p.ID, &p.OwnerID, &p.PetName, &p.AnimalType, &p.Breed, &p.Size,
 			&p.AboutMe, &p.PetPhoto, &p.EnergyLevel, &p.PetAge, (*pq.StringArray)(&temp), &p.Latitude, &p.Longitude, (*pq.StringArray)(&photos),
+			(*pq.StringArray)(&prefSizes), (*pq.StringArray)(&prefTypes), (*pq.StringArray)(&prefEnergies), &maxDist,
 		); err == nil {
 			p.Temperament = temp
 			p.Photos = photos
+			p.PreferredSizes = prefSizes
+			p.PreferredAnimalTypes = prefTypes
+			p.PreferredEnergyLevels = prefEnergies
+			p.MaxDistanceKM = maxDist
 			if len(p.Photos) == 0 && p.PetPhoto != "" {
 				p.Photos = []string{p.PetPhoto}
 			}
@@ -291,18 +308,22 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		PetName     string   `json:"pet_name"`
-		AnimalType  string   `json:"animal_type"`
-		Breed       string   `json:"breed"`
-		Size        string   `json:"size"`
-		AboutMe     string   `json:"about_me"`
-		PetPhoto    string   `json:"pet_photo"`
-		EnergyLevel string   `json:"energy_level"`
-		PetAge      int      `json:"pet_age"`
-		Temperament []string `json:"temperament"`
-		Photos      []string `json:"photos"`
-		Latitude    float64  `json:"latitude"`
-		Longitude   float64  `json:"longitude"`
+		PetName     string          `json:"pet_name"`
+		AnimalType  string          `json:"animal_type"`
+		Breed       string          `json:"breed"`
+		Size        string          `json:"size"`
+		AboutMe     string          `json:"about_me"`
+		PetPhoto    string          `json:"pet_photo"`
+		EnergyLevel string          `json:"energy_level"`
+		PetAge      json.RawMessage `json:"pet_age"`
+		Temperament           []string        `json:"temperament"`
+		Photos                []string        `json:"photos"`
+		PreferredSizes        []string        `json:"preferred_sizes"`
+		PreferredAnimalTypes  []string        `json:"preferred_animal_types"`
+		PreferredEnergyLevels []string        `json:"preferred_energy_levels"`
+		MaxDistanceKM         float64         `json:"max_distance_km"`
+		Latitude              json.RawMessage `json:"latitude"`
+		Longitude             json.RawMessage `json:"longitude"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -310,22 +331,51 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var age int
+	if len(req.PetAge) > 0 {
+		var ageInt int
+		if err := json.Unmarshal(req.PetAge, &ageInt); err == nil {
+			age = ageInt
+		} else {
+			var ageStr string
+			if err := json.Unmarshal(req.PetAge, &ageStr); err == nil {
+				if parsed, err := strconv.Atoi(ageStr); err == nil {
+					age = parsed
+				}
+			}
+		}
+	}
+
+	var lat, lng float64
+	if len(req.Latitude) > 0 {
+		var f float64
+		if err := json.Unmarshal(req.Latitude, &f); err == nil {
+			lat = f
+		}
+	}
+	if len(req.Longitude) > 0 {
+		var f float64
+		if err := json.Unmarshal(req.Longitude, &f); err == nil {
+			lng = f
+		}
+	}
+
 	res, err := h.DB.Exec(`
 		UPDATE pets 
-		SET pet_name = COALESCE(NULLIF($1, ''), pet_name),
-		    animal_type = COALESCE(NULLIF($2, ''), animal_type),
-		    breed = COALESCE(NULLIF($3, ''), breed),
-		    size = COALESCE(NULLIF($4, ''), size),
-		    about_me = COALESCE(NULLIF($5, ''), about_me),
+		SET pet_name = CASE WHEN $1 <> '' THEN $1 ELSE pet_name END,
+		    animal_type = CASE WHEN $2 <> '' THEN $2 ELSE animal_type END,
+		    breed = CASE WHEN $3 <> '' THEN $3 ELSE breed END,
+		    size = CASE WHEN $4 <> '' THEN $4 ELSE size END,
+		    about_me = $5,
 		    pet_photo = CASE WHEN $6 <> '' THEN $6 ELSE pet_photo END,
-		    energy_level = COALESCE(NULLIF($7, ''), energy_level),
-		    pet_age = CASE WHEN $8 > 0 THEN $8 ELSE pet_age END,
+		    energy_level = CASE WHEN $7 <> '' THEN $7 ELSE energy_level END,
+		    pet_age = $8,
 		    temperament = CASE WHEN array_length($9::text[], 1) > 0 THEN $9::text[] ELSE temperament END,
 		    photos = CASE WHEN array_length($10::text[], 1) > 0 THEN $10::text[] ELSE photos END,
-		    latitude = CASE WHEN $11 <> 0 THEN $11 ELSE latitude END,
-		    longitude = CASE WHEN $12 <> 0 THEN $12 ELSE longitude END
+		    latitude = CASE WHEN $11 <> 0.0 THEN $11 ELSE latitude END,
+		    longitude = CASE WHEN $12 <> 0.0 THEN $12 ELSE longitude END
 		WHERE id = $13 AND owner_id = $14;
-	`, req.PetName, req.AnimalType, req.Breed, req.Size, req.AboutMe, req.PetPhoto, req.EnergyLevel, req.PetAge, pq.Array(req.Temperament), pq.Array(req.Photos), req.Latitude, req.Longitude, petID, userID)
+	`, req.PetName, req.AnimalType, req.Breed, req.Size, req.AboutMe, req.PetPhoto, req.EnergyLevel, age, pq.Array(req.Temperament), pq.Array(req.Photos), lat, lng, petID, userID)
 
 	if err != nil {
 		log.Printf("❌ Failed updating pet %d: %v", petID, err)
@@ -338,6 +388,21 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Pet not found or unauthorized")
 		return
 	}
+
+	// Update pet_preferences
+	maxDist := req.MaxDistanceKM
+	if maxDist <= 0 {
+		maxDist = 15.0
+	}
+	_, _ = h.DB.Exec(`
+		INSERT INTO pet_preferences (pet_id, preferred_sizes, preferred_animal_types, preferred_energy_levels, max_distance_km)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (pet_id) DO UPDATE
+		SET preferred_sizes = EXCLUDED.preferred_sizes,
+		    preferred_animal_types = EXCLUDED.preferred_animal_types,
+		    preferred_energy_levels = EXCLUDED.preferred_energy_levels,
+		    max_distance_km = EXCLUDED.max_distance_km;
+	`, petID, pq.Array(req.PreferredSizes), pq.Array(req.PreferredAnimalTypes), pq.Array(req.PreferredEnergyLevels), maxDist)
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "pet updated"})
 }

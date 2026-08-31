@@ -184,3 +184,92 @@ func (h *Handler) UploadPetPhoto(w http.ResponseWriter, r *http.Request) {
 		"message":   "Pet photo uploaded successfully",
 	})
 }
+
+// DeleteUserPhoto handles DELETE /me/photo
+func (h *Handler) DeleteUserPhoto(w http.ResponseWriter, r *http.Request) {
+	if !h.requireDB(w) {
+		return
+	}
+
+	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
+	}
+
+	_, err := h.DB.Exec(`
+		UPDATE user_profiles 
+		SET owner_photo = '', updated_at = NOW() 
+		WHERE user_id = $1;
+	`, userID)
+	if err != nil {
+		log.Printf("❌ Failed clearing user profile photo: %v", err)
+		writeError(w, http.StatusInternalServerError, "Database update error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"message": "User photo removed successfully",
+	})
+}
+
+// DeletePetPhoto handles DELETE /pets/{id}/photo
+func (h *Handler) DeletePetPhoto(w http.ResponseWriter, r *http.Request) {
+	if !h.requireDB(w) {
+		return
+	}
+
+	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
+	}
+
+	petIDStr := r.PathValue("id")
+	petID, err := strconv.Atoi(petIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid pet ID")
+		return
+	}
+
+	// Verify ownership
+	var ownerID int
+	err = h.DB.QueryRow(`SELECT owner_id FROM pets WHERE id = $1`, petID).Scan(&ownerID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "Pet not found")
+		return
+	} else if ownerID != userID {
+		writeError(w, http.StatusForbidden, "You do not own this pet")
+		return
+	}
+
+	photoQuery := r.URL.Query().Get("photo_url")
+	if photoQuery != "" {
+		// Remove specific photo from gallery array and reset pet_photo if it matched
+		_, err = h.DB.Exec(`
+			UPDATE pets 
+			SET photos = array_remove(photos, $1),
+			    pet_photo = CASE WHEN pet_photo = $1 THEN '' ELSE pet_photo END
+			WHERE id = $2;
+		`, photoQuery, petID)
+	} else {
+		// Clear all photos for this pet
+		_, err = h.DB.Exec(`
+			UPDATE pets 
+			SET photos = '{}', pet_photo = '' 
+			WHERE id = $1;
+		`, petID)
+	}
+
+	if err != nil {
+		log.Printf("❌ Failed removing pet photo: %v", err)
+		writeError(w, http.StatusInternalServerError, "Database update error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"message": "Pet photo removed successfully",
+	})
+}

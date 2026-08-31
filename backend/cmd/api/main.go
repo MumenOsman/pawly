@@ -189,9 +189,10 @@ func main() {
 	mux.HandleFunc("POST /pets", auth.Required(h.CreatePet))
 	mux.HandleFunc("GET /pets/{id}", auth.Required(h.GetPet))
 	mux.HandleFunc("PUT /pets/{id}", auth.Required(h.UpdatePet))
-	mux.HandleFunc("DELETE /pets/{id}", auth.Required(h.DeletePet))
 	mux.HandleFunc("POST /me/photo", auth.Required(h.UploadUserPhoto))
+	mux.HandleFunc("DELETE /me/photo", auth.Required(h.DeleteUserPhoto))
 	mux.HandleFunc("POST /pets/{id}/photo", auth.Required(h.UploadPetPhoto))
+	mux.HandleFunc("DELETE /pets/{id}/photo", auth.Required(h.DeletePetPhoto))
 	mux.HandleFunc("DELETE /me", auth.Required(h.DeleteAccount))
 	mux.HandleFunc("DELETE /users/me", auth.Required(h.DeleteAccount))
 
