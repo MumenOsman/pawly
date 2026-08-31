@@ -20,6 +20,11 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
+	}
+
 	user, err := h.fetchUser(userID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
@@ -70,7 +75,8 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	var req updateProfileReq
@@ -201,7 +207,8 @@ func (h *Handler) CreatePet(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	var req struct {
@@ -272,7 +279,8 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	petIDStr := r.PathValue("id")
@@ -302,7 +310,7 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(`
+	res, err := h.DB.Exec(`
 		UPDATE pets 
 		SET pet_name = COALESCE(NULLIF($1, ''), pet_name),
 		    animal_type = COALESCE(NULLIF($2, ''), animal_type),
@@ -316,12 +324,18 @@ func (h *Handler) UpdatePet(w http.ResponseWriter, r *http.Request) {
 		    photos = CASE WHEN array_length($10::text[], 1) > 0 THEN $10::text[] ELSE photos END,
 		    latitude = CASE WHEN $11 <> 0 THEN $11 ELSE latitude END,
 		    longitude = CASE WHEN $12 <> 0 THEN $12 ELSE longitude END
-		WHERE id = $13 AND (owner_id = $14 OR $14 = 1);
+		WHERE id = $13 AND owner_id = $14;
 	`, req.PetName, req.AnimalType, req.Breed, req.Size, req.AboutMe, req.PetPhoto, req.EnergyLevel, req.PetAge, pq.Array(req.Temperament), pq.Array(req.Photos), req.Latitude, req.Longitude, petID, userID)
 
 	if err != nil {
 		log.Printf("❌ Failed updating pet %d: %v", petID, err)
 		writeError(w, http.StatusInternalServerError, "Failed to update pet")
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		writeError(w, http.StatusNotFound, "Pet not found or unauthorized")
 		return
 	}
 
@@ -337,7 +351,8 @@ func (h *Handler) DeletePet(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	petIDStr := r.PathValue("id")
@@ -347,14 +362,78 @@ func (h *Handler) DeletePet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.DB.Exec(`DELETE FROM pets WHERE id = $1 AND (owner_id = $2 OR $2 = 1);`, petID, userID)
+	res, err := h.DB.Exec(`DELETE FROM pets WHERE id = $1 AND owner_id = $2;`, petID, userID)
 	if err != nil {
 		log.Printf("❌ Failed deleting pet %d: %v", petID, err)
 		writeError(w, http.StatusInternalServerError, "Failed to delete pet")
 		return
 	}
 
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		writeError(w, http.StatusNotFound, "Pet not found or unauthorized")
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "pet deleted"})
+}
+
+// GetPet returns a specific pet's full details by ID.
+// GET /pets/{id}
+func (h *Handler) GetPet(w http.ResponseWriter, r *http.Request) {
+	if !h.requireDB(w) {
+		return
+	}
+
+	petIDStr := r.PathValue("id")
+	petID, err := strconv.Atoi(petIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid pet ID")
+		return
+	}
+
+	type petDetailResp struct {
+		ID          int      `json:"id"`
+		OwnerID     int      `json:"owner_id"`
+		PetName     string   `json:"pet_name"`
+		AnimalType  string   `json:"animal_type"`
+		Breed       string   `json:"breed"`
+		Size        string   `json:"size"`
+		AboutMe     string   `json:"about_me"`
+		PetPhoto    string   `json:"pet_photo"`
+		EnergyLevel string   `json:"energy_level"`
+		PetAge      int      `json:"pet_age"`
+		Temperament []string `json:"temperament"`
+		Latitude    float64  `json:"latitude"`
+		Longitude   float64  `json:"longitude"`
+		Photos      []string `json:"photos"`
+	}
+
+	var p petDetailResp
+	var temp, photos pq.StringArray
+	err = h.DB.QueryRow(`
+		SELECT id, owner_id, pet_name, animal_type, COALESCE(breed, ''), size, 
+		       COALESCE(about_me, ''), COALESCE(pet_photo, ''), energy_level, 
+		       COALESCE(pet_age, 0), COALESCE(temperament, '{}'), latitude, longitude,
+		       COALESCE(photos, '{}')
+		FROM pets 
+		WHERE id = $1
+	`, petID).Scan(
+		&p.ID, &p.OwnerID, &p.PetName, &p.AnimalType, &p.Breed, &p.Size,
+		&p.AboutMe, &p.PetPhoto, &p.EnergyLevel, &p.PetAge, &temp, &p.Latitude, &p.Longitude, &photos,
+	)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "Pet not found")
+		return
+	}
+
+	p.Temperament = []string(temp)
+	p.Photos = []string(photos)
+	if len(p.Photos) == 0 && p.PetPhoto != "" {
+		p.Photos = []string{p.PetPhoto}
+	}
+
+	writeJSON(w, http.StatusOK, p)
 }
 
 // GetMyBio returns the authenticated user's biographical data (pets + preferences).
@@ -365,6 +444,11 @@ func (h *Handler) GetMyBio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
+	}
+
 	bio, err := h.fetchUserBio(userID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "bio data not found")
@@ -373,23 +457,67 @@ func (h *Handler) GetMyBio(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, bio)
 }
 
-// --- /users/{id} endpoints ---
+// canViewUser checks whether requestingUserID is allowed to view targetUserID's profile.
+// Access is permitted if:
+// 1. requestingUserID == targetUserID
+// 2. targetUser is recommended to requester
+// 3. There is a pending connection request between their pets
+// 4. There is an established connection between their pets
+func (h *Handler) canViewUser(requestingUserID, targetUserID int) bool {
+	if requestingUserID == targetUserID {
+		return true
+	}
 
-// GetUser returns a user's basic info (name + photo).
+	var allowed bool
+	err := h.DB.QueryRow(`
+		SELECT EXISTS (
+			-- 1. Connected
+			SELECT 1 FROM connections c
+			JOIN pets p1 ON c.pet1_id = p1.id
+			JOIN pets p2 ON c.pet2_id = p2.id
+			WHERE (p1.owner_id = $1 AND p2.owner_id = $2)
+			   OR (p1.owner_id = $2 AND p2.owner_id = $1)
+			
+			UNION
+			
+			-- 2. Open connection request
+			SELECT 1 FROM connection_requests cr
+			JOIN pets p_sender ON cr.sender_pet_id = p_sender.id
+			JOIN pets p_receiver ON cr.receiver_pet_id = p_receiver.id
+			WHERE (p_sender.owner_id = $1 AND p_receiver.owner_id = $2)
+			   OR (p_sender.owner_id = $2 AND p_receiver.owner_id = $1)
+
+			UNION
+
+			-- 3. Recommended (shares at least one compatible animal type and within 40km or not dismissed)
+			SELECT 1 FROM pets p_target
+			JOIN pets p_my ON p_target.animal_type = p_my.animal_type
+			WHERE p_target.owner_id = $2 AND p_my.owner_id = $1
+			  AND p_target.id NOT IN (SELECT pet_id FROM dismissed_recommendations WHERE user_id = $1)
+		)
+	`, requestingUserID, targetUserID).Scan(&allowed)
+
+	return err == nil && allowed
+}
+
+// GetUser returns a user's basic info (name + photo + profile_url).
 // GET /users/{id}
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	if !h.requireDB(w) {
 		return
 	}
 
+	requestingUserID := getUserID(r)
 	targetID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid user id")
+		writeError(w, http.StatusNotFound, "user not found")
 		return
 	}
 
-	// TODO: Check permission — is this user recommended/connected to the requester?
-	// For now, allow any authenticated user to view any profile.
+	if !h.canViewUser(requestingUserID, targetID) {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
 
 	user, err := h.fetchUser(targetID)
 	if err != nil {
@@ -406,19 +534,33 @@ func (h *Handler) GetUserProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	requestingUserID := getUserID(r)
 	targetID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid user id")
+		writeError(w, http.StatusNotFound, "profile not found")
 		return
 	}
 
-	// TODO: Check permission
+	if !h.canViewUser(requestingUserID, targetID) {
+		writeError(w, http.StatusNotFound, "profile not found")
+		return
+	}
 
 	profile, err := h.fetchUserProfile(targetID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "profile not found")
 		return
 	}
+
+	// Strip private data (email, date_of_birth) when viewed by other users
+	if requestingUserID != targetID {
+		sanitized := *profile
+		sanitized.Email = ""
+		sanitized.DateOfBirth = ""
+		writeJSON(w, http.StatusOK, sanitized)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, profile)
 }
 
@@ -429,13 +571,17 @@ func (h *Handler) GetUserBio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	requestingUserID := getUserID(r)
 	targetID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid user id")
+		writeError(w, http.StatusNotFound, "bio data not found")
 		return
 	}
 
-	// TODO: Check permission
+	if !h.canViewUser(requestingUserID, targetID) {
+		writeError(w, http.StatusNotFound, "bio data not found")
+		return
+	}
 
 	bio, err := h.fetchUserBio(targetID)
 	if err != nil {
@@ -448,9 +594,11 @@ func (h *Handler) GetUserBio(w http.ResponseWriter, r *http.Request) {
 // --- Database query helpers ---
 
 type userBasic struct {
-	ID         int    `json:"id"`
-	OwnerName  string `json:"owner_name"`
-	OwnerPhoto string `json:"owner_photo"`
+	ID          int    `json:"id"`
+	OwnerName   string `json:"owner_name"`
+	OwnerPhoto  string `json:"owner_photo"`
+	ProfileURL  string `json:"profile_url"`
+	ProfileLink string `json:"profile_link"`
 }
 
 type userProfile struct {
@@ -494,6 +642,8 @@ func (h *Handler) fetchUser(userID int) (*userBasic, error) {
 		return nil, err
 	}
 	u.OwnerPhoto = photo.String
+	u.ProfileURL = "/users/" + strconv.Itoa(userID) + "/profile"
+	u.ProfileLink = "/users/" + strconv.Itoa(userID) + "/profile"
 	return &u, nil
 }
 

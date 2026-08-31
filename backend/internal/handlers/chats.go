@@ -57,7 +57,8 @@ func (h *Handler) GetChats(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	query := `
@@ -164,12 +165,29 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	chatID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid chat ID")
+		return
+	}
+
+	// Verify user is a participant of this chat
+	var isMember bool
+	err = h.DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM chats c
+			JOIN connections conn ON c.connection_id = conn.id
+			JOIN pets p1 ON conn.pet1_id = p1.id
+			JOIN pets p2 ON conn.pet2_id = p2.id
+			WHERE c.id = $1 AND (p1.owner_id = $2 OR p2.owner_id = $2)
+		)
+	`, chatID, userID).Scan(&isMember)
+	if err != nil || !isMember {
+		writeError(w, http.StatusNotFound, "chat not found or access denied")
 		return
 	}
 
@@ -241,20 +259,24 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		var u1, u2 int
-		err := h.DB.QueryRow(`
-			SELECT p1.owner_id, p2.owner_id 
-			FROM chats c 
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
+	}
+
+	// Verify user is a participant in this chat
+	var isMember bool
+	err = h.DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM chats c
 			JOIN connections conn ON c.connection_id = conn.id
 			JOIN pets p1 ON conn.pet1_id = p1.id
 			JOIN pets p2 ON conn.pet2_id = p2.id
-			WHERE c.id = $1
-		`, chatID).Scan(&u1, &u2)
-		if err == nil && u1 > 0 {
-			userID = u1
-		} else {
-			userID = 106
-		}
+			WHERE c.id = $1 AND (p1.owner_id = $2 OR p2.owner_id = $2)
+		)
+	`, chatID, userID).Scan(&isMember)
+	if err != nil || !isMember {
+		writeError(w, http.StatusForbidden, "not a participant in this chat")
+		return
 	}
 
 	var req struct {

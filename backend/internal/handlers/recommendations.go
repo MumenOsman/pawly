@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"log"
 	"math"
 	"net/http"
@@ -33,6 +34,17 @@ type PetRecommendation struct {
 	MatchedPetName  string   `json:"matched_pet_name"`
 }
 
+type idResp struct {
+	ID int `json:"id"`
+}
+
+type PetPreferenceInfo struct {
+	PreferredSizes        []string
+	PreferredAnimalTypes  []string
+	PreferredEnergyLevels []string
+	MaxDistanceKM         float64
+}
+
 type ownedPetInfo struct {
 	ID          int
 	PetName     string
@@ -40,8 +52,10 @@ type ownedPetInfo struct {
 	Size        string
 	EnergyLevel string
 	PetAge      int
+	Temperament []string
 	Latitude    float64
 	Longitude   float64
+	Preferences *PetPreferenceInfo
 }
 
 // GetRecommendations returns real recommended pets from PostgreSQL for the authenticated user.
@@ -56,10 +70,28 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1 // Default to user 1 for dev testing
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
-	// 1. Fetch user's own pets
+	// 1. Verify user has completed their profile (has owner_name/location and at least one pet)
+	var hasProfile bool
+	err := h.DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM user_profiles up
+			JOIN users u ON u.id = up.user_id
+			WHERE up.user_id = $1 
+			  AND COALESCE(NULLIF(TRIM(up.owner_name), ''), NULLIF(TRIM(u.owner_name), '')) IS NOT NULL
+			  AND COALESCE(NULLIF(TRIM(up.location), ''), '') <> ''
+		)
+	`, userID).Scan(&hasProfile)
+	if err != nil || !hasProfile {
+		// User profile not completed yet -> Return empty recommendation list
+		writeJSON(w, http.StatusOK, []idResp{})
+		return
+	}
+
+	// 2. Fetch user's own pets
 	petIDsParam := r.URL.Query().Get("pet_ids")
 	if petIDsParam == "" {
 		petIDsParam = r.URL.Query().Get("pet_id")
@@ -74,53 +106,70 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Query user's pets from DB
+	// Query user's pets from DB along with their preferences
 	var myPets []ownedPetInfo
-	var err error
-
+	queryMyPets := `
+		SELECT p.id, p.pet_name, p.animal_type, p.size, p.energy_level, COALESCE(p.pet_age, 0), 
+		       COALESCE(p.temperament, '{}'), p.latitude, p.longitude,
+		       COALESCE(pp.preferred_sizes, '{}'), COALESCE(pp.preferred_animal_types, '{}'),
+		       COALESCE(pp.preferred_energy_levels, '{}'), COALESCE(pp.max_distance_km, 15.0)
+		FROM pets p
+		LEFT JOIN pet_preferences pp ON p.id = pp.pet_id
+		WHERE p.owner_id = $1
+	`
 	if len(activePetIDs) > 0 {
-		rows, err := h.DB.Query(`
-			SELECT id, pet_name, animal_type, size, energy_level, COALESCE(pet_age, 0), latitude, longitude
-			FROM pets 
-			WHERE owner_id = $1 AND id = ANY($2)
-		`, userID, pq.Array(activePetIDs))
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var p ownedPetInfo
-				if err := rows.Scan(&p.ID, &p.PetName, &p.AnimalType, &p.Size, &p.EnergyLevel, &p.PetAge, &p.Latitude, &p.Longitude); err == nil {
-					myPets = append(myPets, p)
+		queryMyPets += ` AND p.id = ANY($2)`
+	}
+
+	var rows *sql.Rows
+	if len(activePetIDs) > 0 {
+		rows, err = h.DB.Query(queryMyPets, userID, pq.Array(activePetIDs))
+	} else {
+		rows, err = h.DB.Query(queryMyPets, userID)
+	}
+
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var p ownedPetInfo
+			var temp, prefSizes, prefTypes, prefEnergies pq.StringArray
+			var maxDist float64
+			if err := rows.Scan(
+				&p.ID, &p.PetName, &p.AnimalType, &p.Size, &p.EnergyLevel, &p.PetAge,
+				&temp, &p.Latitude, &p.Longitude,
+				&prefSizes, &prefTypes, &prefEnergies, &maxDist,
+			); err == nil {
+				p.Temperament = []string(temp)
+				p.Preferences = &PetPreferenceInfo{
+					PreferredSizes:        []string(prefSizes),
+					PreferredAnimalTypes:  []string(prefTypes),
+					PreferredEnergyLevels: []string(prefEnergies),
+					MaxDistanceKM:         maxDist,
 				}
+				myPets = append(myPets, p)
 			}
 		}
 	}
 
-	// Fallback to all pets of user if no active ID specified or found
+	// If user has no pets registered yet -> Profile is incomplete, return empty list
 	if len(myPets) == 0 {
-		rows, err := h.DB.Query(`
-			SELECT id, pet_name, animal_type, size, energy_level, COALESCE(pet_age, 0), latitude, longitude
-			FROM pets 
-			WHERE owner_id = $1
-		`, userID)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var p ownedPetInfo
-				if err := rows.Scan(&p.ID, &p.PetName, &p.AnimalType, &p.Size, &p.EnergyLevel, &p.PetAge, &p.Latitude, &p.Longitude); err == nil {
-					myPets = append(myPets, p)
-				}
-			}
-		}
+		writeJSON(w, http.StatusOK, []idResp{})
+		return
 	}
 
 	// Collect animal types allowed for recommendation
 	allowedTypes := make(map[string]bool)
 	for _, mp := range myPets {
-		allowedTypes[mp.AnimalType] = true
-	}
-	// Fallback to dog if user has no pets yet
-	if len(allowedTypes) == 0 {
-		allowedTypes["dog"] = true
+		if mp.Preferences != nil && len(mp.Preferences.PreferredAnimalTypes) > 0 {
+			for _, pt := range mp.Preferences.PreferredAnimalTypes {
+				if pt != "" {
+					allowedTypes[strings.ToLower(pt)] = true
+				}
+			}
+		}
+		if mp.AnimalType != "" {
+			allowedTypes[strings.ToLower(mp.AnimalType)] = true
+		}
 	}
 
 	typeList := make([]string, 0, len(allowedTypes))
@@ -136,7 +185,7 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 		FROM pets p
 		LEFT JOIN user_profiles up ON p.owner_id = up.user_id
 		WHERE p.owner_id <> $1
-		  AND p.animal_type = ANY($2)
+		  AND LOWER(p.animal_type) = ANY($2)
 		  AND p.id NOT IN (
 			SELECT pet_id FROM dismissed_recommendations WHERE user_id = $1
 		  )
@@ -148,24 +197,24 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 		  AND p.id NOT IN (
 			SELECT receiver_pet_id FROM connection_requests WHERE sender_pet_id IN (SELECT id FROM pets WHERE owner_id = $1)
 		  )
-		LIMIT 150;
+		LIMIT 200;
 	`
 
-	rows, err := h.DB.Query(query, userID, pq.Array(typeList))
+	candRows, err := h.DB.Query(query, userID, pq.Array(typeList))
 	if err != nil {
 		log.Printf("❌ Failed querying recommendations from DB: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
+	defer candRows.Close()
 
 	recsMap := make(map[int]PetRecommendation)
 
-	for rows.Next() {
+	for candRows.Next() {
 		var rec PetRecommendation
 		var tempArray pq.StringArray
 
-		err := rows.Scan(
+		err := candRows.Scan(
 			&rec.ID, &rec.OwnerID, &rec.PetName, &rec.AnimalType, &rec.Breed, &rec.Size, &rec.AboutMe,
 			&rec.PetPhoto, &rec.EnergyLevel, &rec.PetAge, &tempArray, &rec.Latitude, &rec.Longitude,
 			&rec.OwnerName, &rec.OwnerPhoto, &rec.OwnerBio,
@@ -194,10 +243,6 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, myPet := range myPets {
-			if myPet.AnimalType != rec.AnimalType {
-				continue
-			}
-
 			// Haversine distance calculation
 			dLat := (rec.Latitude - myPet.Latitude) * (math.Pi / 180.0)
 			dLng := (rec.Longitude - myPet.Longitude) * (math.Pi / 180.0)
@@ -210,7 +255,7 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 				minDistance = dist
 			}
 
-			// Calculate score based on core pet bio fields
+			// Calculate multi-factor score including preferences
 			score := calculatePetMatchScore(myPet, rec, dist)
 			if score > bestScore {
 				bestScore = score
@@ -223,11 +268,13 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		// Filter out obviously poor matches (minimum threshold cutoff of 55%)
+		if bestScore < 55 {
+			continue
+		}
+
 		if bestMatchedPetName == "" && len(myPets) > 0 {
 			bestMatchedPetName = myPets[0].PetName
-		}
-		if bestScore == 0 {
-			bestScore = 65 + (rec.ID*17)%30
 		}
 
 		rec.MatchPercentage = bestScore
@@ -249,69 +296,155 @@ func (h *Handler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
 		}
 		return recs[i].MatchPercentage > recs[j].MatchPercentage
 	})
-
-	// Limit top 100
-	if len(recs) > 100 {
-		recs = recs[:100]
+	// 4. Cap at maximum 10 recommendations at a time (per project specification)
+	limit := 10
+	if limitParam := r.URL.Query().Get("limit"); limitParam != "" {
+		if l, err := strconv.Atoi(limitParam); err == nil && l > 0 && l < 10 {
+			limit = l
+		}
 	}
 
-	writeJSON(w, http.StatusOK, recs)
+	offset := 0
+	if offsetParam := r.URL.Query().Get("offset"); offsetParam != "" {
+		if o, err := strconv.Atoi(offsetParam); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	if offset >= len(recs) {
+		recs = []PetRecommendation{}
+	} else {
+		end := offset + limit
+		if end > len(recs) {
+			end = len(recs)
+		}
+		recs = recs[offset:end]
+	}
+
+	idList := make([]idResp, 0, len(recs))
+	for _, r := range recs {
+		idList = append(idList, idResp{ID: r.ID})
+	}
+
+	writeJSON(w, http.StatusOK, idList)
 }
 
-// Calculate match score strictly using core pet bio fields from get_recommendations.sql
-// (AnimalType, Size, EnergyLevel, PetAge, and DistanceKM <= 10km)
+// Calculate match score using multi-factor weighted formula:
+// w1*Type + w2*Size + w3*Energy + w4*Temperament + w5*Age + w6*Location + Preferences
+// Starts from 0, awards matching traits, applies heavy penalties for polar opposites.
 func calculatePetMatchScore(myPet ownedPetInfo, rec PetRecommendation, distKM float64) int {
-	score := 50.0
+	score := 0.0
 
-	// 1. Energy Level Similarity (Up to 25 pts)
-	e1 := strings.ToLower(myPet.EnergyLevel)
-	e2 := strings.ToLower(rec.EnergyLevel)
-	if e1 == e2 && e1 != "" {
+	// 1. Species / Animal Type Compatibility (25 pts max)
+	myType := strings.ToLower(strings.TrimSpace(myPet.AnimalType))
+	recType := strings.ToLower(strings.TrimSpace(rec.AnimalType))
+	if myType == recType && myType != "" {
+		score += 25.0
+	} else if myPet.Preferences != nil && containsString(myPet.Preferences.PreferredAnimalTypes, recType) {
+		score += 25.0
+	} else {
+		// Different species without explicit preference -> severe deduction
+		score -= 40.0
+	}
+
+	// 2. Energy Level Compatibility (25 pts max)
+	e1 := strings.ToLower(strings.TrimSpace(myPet.EnergyLevel))
+	e2 := strings.ToLower(strings.TrimSpace(rec.EnergyLevel))
+	if myPet.Preferences != nil && containsString(myPet.Preferences.PreferredEnergyLevels, e2) {
+		score += 25.0
+	} else if e1 == e2 && e1 != "" {
 		score += 25.0
 	} else if (e1 == "medium" || e2 == "medium") && (e1 != "" && e2 != "") {
 		score += 15.0
+	} else if (e1 == "low" && e2 == "high") || (e1 == "high" && e2 == "low") {
+		// Polar opposite energy (e.g. hyper puppy vs elderly anxious pet) -> penalty
+		score -= 20.0
 	} else if e1 != "" && e2 != "" {
 		score += 5.0
 	}
 
-	// 2. Size Match (Up to 20 pts)
-	s1 := strings.ToLower(myPet.Size)
-	s2 := strings.ToLower(rec.Size)
-	if s1 == s2 && s1 != "" {
+	// 3. Size Compatibility (20 pts max)
+	s1 := strings.ToLower(strings.TrimSpace(myPet.Size))
+	s2 := strings.ToLower(strings.TrimSpace(rec.Size))
+	if myPet.Preferences != nil && containsString(myPet.Preferences.PreferredSizes, s2) {
+		score += 20.0
+	} else if s1 == s2 && s1 != "" {
 		score += 20.0
 	} else if (s1 == "medium" || s2 == "medium") && (s1 != "" && s2 != "") {
 		score += 12.0
+	} else if (s1 == "small" && (s2 == "large" || s2 == "giant")) || ((s1 == "large" || s1 == "giant") && s2 == "small") {
+		// Extreme size mismatch (small vs giant/large) -> penalty
+		score -= 20.0
 	} else if s1 != "" && s2 != "" {
 		score += 5.0
 	}
 
-	// 3. Age Proximity (Up to 15 pts)
+	// 4. Age Proximity & Stage (15 pts max)
 	if myPet.PetAge > 0 && rec.PetAge > 0 {
 		ageDiff := math.Abs(float64(myPet.PetAge - rec.PetAge))
 		if ageDiff <= 1 {
 			score += 15.0
 		} else if ageDiff <= 3 {
 			score += 10.0
-		} else if ageDiff <= 5 {
+		} else if ageDiff <= 6 {
 			score += 5.0
+		} else if ageDiff >= 10 {
+			// Senior pet (e.g. 14yo) vs 1yo puppy -> penalty
+			score -= 15.0
 		}
 	} else {
 		score += 8.0
 	}
 
-	// 4. Proximity / Distance Score (Strict <= 10km limit, Up to 15 pts)
+	// 5. Temperament / Social Traits (10 pts max)
+	if len(myPet.Temperament) > 0 && len(rec.Temperament) > 0 {
+		overlap := 0
+		for _, t1 := range myPet.Temperament {
+			for _, t2 := range rec.Temperament {
+				if strings.EqualFold(t1, t2) {
+					overlap++
+					break
+				}
+			}
+		}
+		if overlap >= 2 {
+			score += 10.0
+		} else if overlap == 1 {
+			score += 6.0
+		} else {
+			score += 2.0
+		}
+	} else {
+		score += 5.0
+	}
+
+	// 6. Proximity / Location Score (15 pts max)
 	if distKM < 2.0 {
 		score += 15.0
 	} else if distKM < 5.0 {
 		score += 10.0
 	} else if distKM <= 10.0 {
 		score += 5.0
+	} else if distKM > 25.0 {
+		score -= 5.0
 	}
 
 	if score > 99 {
 		score = 99
 	}
+	if score < 0 {
+		score = 0
+	}
 	return int(math.Round(score))
+}
+
+func containsString(slice []string, val string) bool {
+	for _, item := range slice {
+		if strings.EqualFold(strings.TrimSpace(item), strings.TrimSpace(val)) {
+			return true
+		}
+	}
+	return false
 }
 
 // type helper alias
@@ -330,7 +463,8 @@ func (h *Handler) DismissRecommendation(w http.ResponseWriter, r *http.Request) 
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
 	petID, err := strconv.Atoi(r.PathValue("id"))

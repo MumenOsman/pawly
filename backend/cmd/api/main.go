@@ -180,19 +180,20 @@ func main() {
 	mux.HandleFunc("POST /auth/register", h.Register)
 	mux.HandleFunc("POST /auth/login", h.Login)
 
-	// Me — authenticated user shortcuts
-	mux.HandleFunc("GET /me", auth.Optional(h.GetMe))
-	mux.HandleFunc("GET /me/profile", auth.Optional(h.GetMyProfile))
-	mux.HandleFunc("PUT /me/profile", auth.Optional(h.UpdateProfile))
-	mux.HandleFunc("GET /me/bio", auth.Optional(h.GetMyBio))
-	mux.HandleFunc("GET /me/pets", auth.Optional(h.GetMyPets))
-	mux.HandleFunc("POST /pets", auth.Optional(h.CreatePet))
-	mux.HandleFunc("PUT /pets/{id}", auth.Optional(h.UpdatePet))
-	mux.HandleFunc("DELETE /pets/{id}", auth.Optional(h.DeletePet))
-	mux.HandleFunc("POST /me/photo", auth.Optional(h.UploadUserPhoto))
-	mux.HandleFunc("POST /pets/{id}/photo", auth.Optional(h.UploadPetPhoto))
-	mux.HandleFunc("DELETE /me", auth.Optional(h.DeleteAccount))
-	mux.HandleFunc("DELETE /users/me", auth.Optional(h.DeleteAccount))
+	// Me — authenticated user shortcuts (protected)
+	mux.HandleFunc("GET /me", auth.Required(h.GetMe))
+	mux.HandleFunc("GET /me/profile", auth.Required(h.GetMyProfile))
+	mux.HandleFunc("PUT /me/profile", auth.Required(h.UpdateProfile))
+	mux.HandleFunc("GET /me/bio", auth.Required(h.GetMyBio))
+	mux.HandleFunc("GET /me/pets", auth.Required(h.GetMyPets))
+	mux.HandleFunc("POST /pets", auth.Required(h.CreatePet))
+	mux.HandleFunc("GET /pets/{id}", auth.Required(h.GetPet))
+	mux.HandleFunc("PUT /pets/{id}", auth.Required(h.UpdatePet))
+	mux.HandleFunc("DELETE /pets/{id}", auth.Required(h.DeletePet))
+	mux.HandleFunc("POST /me/photo", auth.Required(h.UploadUserPhoto))
+	mux.HandleFunc("POST /pets/{id}/photo", auth.Required(h.UploadPetPhoto))
+	mux.HandleFunc("DELETE /me", auth.Required(h.DeleteAccount))
+	mux.HandleFunc("DELETE /users/me", auth.Required(h.DeleteAccount))
 
 	// Static file serving for uploads
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
@@ -202,29 +203,22 @@ func main() {
 	mux.HandleFunc("GET /users/{id}/profile", auth.Required(h.GetUserProfile))
 	mux.HandleFunc("GET /users/{id}/bio", auth.Required(h.GetUserBio))
 
-	// Recommendations (protected/optional for demo)
-	mux.HandleFunc("GET /recommendations", auth.Optional(h.GetRecommendations))
-	mux.HandleFunc("POST /recommendations/{id}/dismiss", auth.Optional(h.DismissRecommendation))
+	// Recommendations (protected)
+	mux.HandleFunc("GET /recommendations", auth.Required(h.GetRecommendations))
+	mux.HandleFunc("POST /recommendations/{id}/dismiss", auth.Required(h.DismissRecommendation))
 
-	// Connections
-	mux.HandleFunc("GET /connections", auth.Optional(h.GetConnections))
-	mux.HandleFunc("POST /connections/request", auth.Optional(h.SendConnectionRequest))
-	mux.HandleFunc("GET /connections/requests", auth.Optional(h.GetConnectionRequests))
-	mux.HandleFunc("POST /connections/requests/{id}/accept", auth.Optional(h.AcceptConnectionRequest))
-	mux.HandleFunc("POST /connections/requests/{id}/dismiss", auth.Optional(h.DismissConnectionRequest))
-	mux.HandleFunc("DELETE /connections/{id}", auth.Optional(h.Disconnect))
+	// Connections (protected)
+	mux.HandleFunc("GET /connections", auth.Required(h.GetConnections))
+	mux.HandleFunc("POST /connections/request", auth.Required(h.SendConnectionRequest))
+	mux.HandleFunc("GET /connections/requests", auth.Required(h.GetConnectionRequests))
+	mux.HandleFunc("POST /connections/requests/{id}/accept", auth.Required(h.AcceptConnectionRequest))
+	mux.HandleFunc("POST /connections/requests/{id}/dismiss", auth.Required(h.DismissConnectionRequest))
+	mux.HandleFunc("DELETE /connections/{id}", auth.Required(h.Disconnect))
 
-	// Chats
-	mux.HandleFunc("GET /chats", auth.Optional(h.GetChats))
-	mux.HandleFunc("GET /chats/{id}/messages", auth.Optional(h.GetMessages))
-	mux.HandleFunc("POST /chats/{id}/messages", auth.Optional(h.SendMessage))
-
-	// Debug & test consoles (public — development only)
-	mux.HandleFunc("GET /test", h.TestPage)
-	mux.HandleFunc("GET /debug", h.DebugPage)
-	mux.HandleFunc("GET /debug/tables", h.DebugTables)
-	mux.HandleFunc("GET /debug/tables/{name}", h.DebugTableData)
-	mux.HandleFunc("POST /debug/query", h.DebugSQLExec)
+	// Chats (protected)
+	mux.HandleFunc("GET /chats", auth.Required(h.GetChats))
+	mux.HandleFunc("GET /chats/{id}/messages", auth.Required(h.GetMessages))
+	mux.HandleFunc("POST /chats/{id}/messages", auth.Required(h.SendMessage))
 
 	// Apply CORS middleware
 	handler := middleware.CORS(mux)
@@ -234,8 +228,6 @@ func main() {
 	fmt.Printf("🐾  Pawly API Server — port %s\n", port)
 	fmt.Println("🐾 ─────────────────────────────────────────")
 	fmt.Printf("   Health:  http://localhost:%s/health\n", port)
-	fmt.Printf("   Test:    http://localhost:%s/test\n", port)
-	fmt.Printf("   Debug:   http://localhost:%s/debug\n", port)
 	fmt.Println("   ─────────────────────────────────────────")
 
 	if err := http.ListenAndServe(":"+port, handler); err != nil {

@@ -21,7 +21,8 @@ func (h *Handler) GetConnections(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	rows, err := h.DB.Query(`
@@ -63,7 +64,8 @@ func (h *Handler) SendConnectionRequest(w http.ResponseWriter, r *http.Request) 
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	var req sendConnectionReq
@@ -81,7 +83,7 @@ func (h *Handler) SendConnectionRequest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Determine sender pet
+	// Determine sender pet (must belong to authenticated user)
 	senderPetID := req.SenderPetID
 	if senderPetID == 0 {
 		err := h.DB.QueryRow(`
@@ -89,6 +91,13 @@ func (h *Handler) SendConnectionRequest(w http.ResponseWriter, r *http.Request) 
 		`, userID).Scan(&senderPetID)
 		if err != nil || senderPetID == 0 {
 			http.Error(w, "user has no pet to connect with", http.StatusBadRequest)
+			return
+		}
+	} else {
+		var ownerID int
+		err := h.DB.QueryRow(`SELECT owner_id FROM pets WHERE id = $1`, senderPetID).Scan(&ownerID)
+		if err != nil || ownerID != userID {
+			http.Error(w, "you do not own the sender pet", http.StatusForbidden)
 			return
 		}
 	}
@@ -226,7 +235,8 @@ func (h *Handler) GetConnectionRequests(w http.ResponseWriter, r *http.Request) 
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	writeJSON(w, http.StatusOK, []map[string]int{})
@@ -236,6 +246,12 @@ func (h *Handler) GetConnectionRequests(w http.ResponseWriter, r *http.Request) 
 // POST /connections/requests/{id}/accept
 func (h *Handler) AcceptConnectionRequest(w http.ResponseWriter, r *http.Request) {
 	if !h.requireDB(w) {
+		return
+	}
+
+	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
 		return
 	}
 
@@ -249,6 +265,12 @@ func (h *Handler) DismissConnectionRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{"status": "dismissed"})
 }
 
@@ -259,7 +281,11 @@ func (h *Handler) Disconnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = getUserID(r)
+	userID := getUserID(r)
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected"})
 }

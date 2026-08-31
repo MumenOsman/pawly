@@ -22,7 +22,8 @@ func (h *Handler) UploadUserPhoto(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
@@ -97,7 +98,8 @@ func (h *Handler) UploadPetPhoto(w http.ResponseWriter, r *http.Request) {
 
 	userID := getUserID(r)
 	if userID == 0 {
-		userID = 1
+		writeError(w, http.StatusUnauthorized, "unauthorized - please log in")
+		return
 	}
 
 	petIDStr := r.PathValue("id")
@@ -107,16 +109,13 @@ func (h *Handler) UploadPetPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify pet belongs to current user or insert missing pet record
+	// Verify pet belongs to current user
 	var ownerID int
 	err = h.DB.QueryRow(`SELECT owner_id FROM pets WHERE id = $1`, petID).Scan(&ownerID)
 	if err != nil {
-		_, _ = h.DB.Exec(`
-			INSERT INTO pets (id, owner_id, pet_name, animal_type, pet_photo, latitude, longitude)
-			VALUES ($1, $2, 'New Buddy', 'dog', '/paw-icon.svg', 60.1699, 24.9384)
-			ON CONFLICT (id) DO NOTHING;
-		`, petID, userID)
-	} else if ownerID != userID && userID != 1 { // Allow user 1 in dev
+		writeError(w, http.StatusNotFound, "Pet not found")
+		return
+	} else if ownerID != userID {
 		writeError(w, http.StatusForbidden, "You do not own this pet")
 		return
 	}
