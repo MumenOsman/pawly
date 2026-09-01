@@ -21,7 +21,7 @@ const DEFAULT_FALLBACK_PETS = [
   { id: 2, pet_name: 'Peto', animal_type: 'cat', pet_photo: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=80' },
 ];
 
-const getFullPhotoUrl = (url, animalType) => {
+const getFullPhotoUrl = (url?: string, animalType?: string) => {
   if (!url) return '/paw-icon.svg';
   if (url.startsWith('/uploads')) {
     return `http://localhost:3000${url}`;
@@ -34,6 +34,15 @@ const getFullPhotoUrl = (url, animalType) => {
     : 'https://placedog.net/120/120?id=1';
 };
 
+export interface NavbarProps {
+  showViewToggle?: boolean;
+  currentView?: string;
+  onViewChange?: (view: string) => void;
+  myPets?: any[];
+  selectedPetIds?: number[];
+  onTogglePet?: (petId: number) => void;
+}
+
 export default function Navbar({
   showViewToggle = false,
   currentView,
@@ -41,7 +50,7 @@ export default function Navbar({
   myPets: myPetsProp,
   selectedPetIds: selectedPetIdsProp,
   onTogglePet,
-}) {
+}: NavbarProps = {}) {
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
@@ -200,7 +209,7 @@ export default function Navbar({
                   src={photoUrl}
                   alt={pet.pet_name}
                   className="navbar__pet-avatar-img"
-                  onError={(e) => {
+                  onError={(e: any) => {
                     e.target.onerror = null;
                     e.target.src = pet.animal_type === 'cat'
                       ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=120&auto=format&fit=crop&q=80'
@@ -242,7 +251,7 @@ export default function Navbar({
                           src={photoUrl}
                           alt={pet.pet_name}
                           className="navbar__pet-drawer-img"
-                          onError={(e) => {
+                          onError={(e: any) => {
                             e.target.onerror = null;
                             e.target.src = 'https://placedog.net/120/120?id=1';
                           }}
@@ -287,7 +296,7 @@ export default function Navbar({
                 src={getFullPhotoUrl(userProfile.owner_photo)}
                 alt={userProfile.owner_name || 'Profile'}
                 className="navbar__profile-img"
-                onError={(e) => {
+                onError={(e: any) => {
                   e.target.onerror = null;
                   e.target.style.display = 'none';
                   const fallbackSvg = e.target.parentElement?.querySelector('.navbar__profile-svg-fallback');

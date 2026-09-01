@@ -206,8 +206,8 @@ export default function ChatView() {
 
   // Reorder chats dynamically so the most recently active chat rises to the top
   // Elevates conversation with latest message to top of conversation list in real-time
-  const updateChatListWithLatestMessage = useCallback((chatId, text, timeStr) => {
-    setChats((prevChats) => {
+  const updateChatListWithLatestMessage = useCallback((chatId: any, text: string, timeStr?: string) => {
+    setChats((prevChats: any[]) => {
       const chatIndex = prevChats.findIndex((c) => String(c.id) === String(chatId));
       if (chatIndex === -1) return prevChats;
       const targetChat = prevChats[chatIndex];
@@ -383,7 +383,7 @@ export default function ChatView() {
                           src={chatPetPhoto}
                           alt={chat.other_pet?.pet_name}
                           className="chat-list-item__avatar"
-                          onError={(e) => {
+                          onError={(e: any) => {
                             e.target.onerror = null;
                             e.target.src = fallbackChatPhoto;
                           }}
@@ -447,7 +447,7 @@ export default function ChatView() {
                       )}
                       alt={activeChat.other_pet?.pet_name}
                       className="chat-mid-header__avatar"
-                      onError={(e) => {
+                      onError={(e: any) => {
                         e.target.onerror = null;
                         e.target.src = isPawly
                           ? '/paw-icon.svg'
@@ -556,7 +556,7 @@ export default function ChatView() {
                       )}
                       alt={activeChat.other_pet?.pet_name}
                       className="in-place-pet-detail__photo"
-                      onError={(e) => {
+                      onError={(e: any) => {
                         e.target.onerror = null;
                         e.target.src = isPawly
                           ? '/paw-icon.svg'
@@ -611,7 +611,7 @@ export default function ChatView() {
                           src={getFullPhotoUrl(activeChat.other_user?.owner_photo, '/placeholder-user.svg')}
                           alt={activeChat.other_user?.owner_name || 'Owner'}
                           className="in-place-owner-avatar"
-                          onError={(e) => {
+                          onError={(e: any) => {
                             e.target.onerror = null;
                             e.target.src = '/placeholder-user.svg';
                           }}

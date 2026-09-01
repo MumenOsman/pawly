@@ -79,9 +79,9 @@ export default function MatchNotification() {
               src={getFullPhotoUrl(matchData.pet1_photo, getDefaultPetPhoto(1, 'dog', pet1Name))}
               alt={pet1Name}
               className="match-notif-avatar"
-              onError={(e) => {
+              onError={(e: any) => {
                 e.target.onerror = null;
-                e.target.src = getDefaultPetPhoto(1, 'dog', pet1Name);
+                e.target.src = '/paw-icon.svg';
               }}
             />
           </div>
@@ -90,7 +90,7 @@ export default function MatchNotification() {
               src={getFullPhotoUrl(matchData.pet2_photo, getDefaultPetPhoto(2, 'dog', pet2Name))}
               alt={pet2Name}
               className="match-notif-avatar"
-              onError={(e) => {
+              onError={(e: any) => {
                 e.target.onerror = null;
                 e.target.src = getDefaultPetPhoto(2, 'dog', pet2Name);
               }}

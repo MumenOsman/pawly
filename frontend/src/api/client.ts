@@ -5,20 +5,19 @@
  * - Automatically attaches JWT from localStorage
  * - Handles JSON request/response
  * - Throws ApiError on non-OK responses
- *
- * Usage:
- *   import { apiFetch } from './client';
- *   const user = await apiFetch('/users/1');
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
 
 /**
  * Custom error class for API responses.
  * Carries the HTTP status code and server error message.
  */
 export class ApiError extends Error {
-  constructor(status, message, data = null) {
+  status: number;
+  data: any;
+
+  constructor(status: number, message: string, data: any = null) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -26,23 +25,21 @@ export class ApiError extends Error {
   }
 }
 
+export interface ApiFetchOptions {
+  method?: string;
+  body?: any;
+  headers?: Record<string, string>;
+}
+
 /**
  * Core fetch wrapper.
- *
- * @param {string} endpoint - API path (e.g. '/users/1')
- * @param {object} options - Fetch options override
- * @param {string} options.method - HTTP method (default: 'GET')
- * @param {object} options.body - Request body (auto-serialized to JSON)
- * @param {object} options.headers - Additional headers
- * @returns {Promise<any>} Parsed JSON response
- * @throws {ApiError} On non-OK responses
  */
-export async function apiFetch(endpoint, options = {}) {
+export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}): Promise<any> {
   const token = localStorage.getItem('pawly_token');
 
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers || {}),
   };
 
   // Attach JWT if available
@@ -50,14 +47,14 @@ export async function apiFetch(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const config = {
+  const config: RequestInit = {
     method: options.method || 'GET',
     headers,
   };
 
   // Serialize body for non-GET requests
   if (options.body && config.method !== 'GET') {
-    config.body = JSON.stringify(options.body);
+    config.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
@@ -68,7 +65,7 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   // Parse JSON response
-  let data;
+  let data: any;
   try {
     data = await response.json();
   } catch {
@@ -82,7 +79,7 @@ export async function apiFetch(endpoint, options = {}) {
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      data.error || data.message || response.statusText,
+      data?.error || data?.message || response.statusText,
       data
     );
   }

@@ -503,7 +503,7 @@ export default function Profile() {
                   src={profile.owner_photo || '/paw-icon.svg'}
                   alt={profile.owner_name}
                   className="profile-page__avatar"
-                  onError={(e) => {
+                  onError={(e: any) => {
                     e.target.onerror = null;
                     e.target.src = '/paw-icon.svg';
                   }}
@@ -576,7 +576,7 @@ export default function Profile() {
                         src={p.pet_photo || '/placeholder-pet.svg'}
                         alt={p.pet_name}
                         className="profile-drawer-item__avatar"
-                        onError={(e) => {
+                        onError={(e: any) => {
                           e.target.onerror = null;
                           e.target.src = p.animal_type === 'cat'
                             ? 'https://placecats.com/neo/600/400'
@@ -792,7 +792,7 @@ export default function Profile() {
                         src={currentPet?.pet_photo || '/paw-icon.svg'}
                         alt={currentPet?.pet_name}
                         className="pet-gallery__main-img"
-                        onError={(e) => {
+                        onError={(e: any) => {
                           e.target.onerror = null;
                           e.target.src = '/paw-icon.svg';
                         }}
@@ -819,7 +819,7 @@ export default function Profile() {
                                 src={photo}
                                 alt={`Pet ${pIdx + 1}`}
                                 className="pet-gallery__thumb-img"
-                                onError={(e) => {
+                                onError={(e: any) => {
                                   e.target.onerror = null;
                                   e.target.src = '/paw-icon.svg';
                                 }}

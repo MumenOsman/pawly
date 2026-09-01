@@ -82,7 +82,7 @@ const createClusterMarker = (count) => {
 };
 
 // Helsinki default center
-const DEFAULT_CENTER = [60.1699, 24.9384];
+const DEFAULT_CENTER: [number, number] = [60.1699, 24.9384];
 const DEFAULT_ZOOM = 12;
 
 function getInitialUserLocation() {
@@ -340,8 +340,8 @@ export default function Discover() {
 
   // Group pet cards by park/neighborhood location for map clustering
   const clusteredLocations = useMemo(() => {
-    const clusters = {};
-    cards.forEach((card) => {
+    const clusters: Record<string, { key: string; latitude: number; longitude: number; pets: any[] }> = {};
+    (cards as any[]).forEach((card) => {
       const pet = card.pet || card;
       if (!pet.latitude || !pet.longitude) return;
 
@@ -415,7 +415,7 @@ export default function Discover() {
             src={getFullPhotoUrl(pet.pet_photo, getDefaultPetPhoto(pet.id, pet.animal_type, pet.pet_name))}
             alt={pet.pet_name}
             className="in-place-pet-detail__photo"
-            onError={(e) => {
+            onError={(e: any) => {
               e.target.onerror = null;
               e.target.src = getDefaultPetPhoto(pet.id, pet.animal_type, pet.pet_name);
             }}
