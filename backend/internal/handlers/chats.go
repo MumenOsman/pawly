@@ -156,7 +156,7 @@ func (h *Handler) GetChats(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetMessages returns paginated messages for a specific chat.
-// GET /chats/{id}/messages?page=1
+// GET /chats/{id}/messages?page=1&limit=50
 func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	if !h.requireDB(w) {
 		return
@@ -173,6 +173,22 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse pagination parameters with safe defaults
+	page, err := strconv.Atoi(r.URL.Query().Get("page"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil || limit < 1 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
 	// Mark unread messages in this chat as read
 	_, _ = h.DB.Exec(`
 		UPDATE messages 
@@ -180,17 +196,24 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		WHERE chat_id = $1 AND sender_user_id <> $2 AND read_at IS NULL;
 	`, chatID, userID)
 
+	// Get total count of messages for this chat
+	var totalMessages int
+	_ = h.DB.QueryRow(`SELECT COUNT(*) FROM messages WHERE chat_id = $1`, chatID).Scan(&totalMessages)
+
 	rows, err := h.DB.Query(`
 		SELECT id, chat_id, sender_user_id, body, created_at, read_at
 		FROM messages 
 		WHERE chat_id = $1 
 		ORDER BY created_at ASC
-	`, chatID)
+		LIMIT $2 OFFSET $3
+	`, chatID, limit, offset)
 	if err != nil {
 		log.Printf("❌ Failed querying messages for chat %d: %v", chatID, err)
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"messages": []map[string]interface{}{},
-			"page":     1,
+			"page":     page,
+			"limit":    limit,
+			"total":    totalMessages,
 			"has_more": false,
 		})
 		return
@@ -198,12 +221,12 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type msgResp struct {
-		ID           int       `json:"id"`
-		ChatID       int       `json:"chat_id"`
-		SenderUserID int       `json:"sender_user_id"`
-		Body         string    `json:"body"`
-		CreatedAt    time.Time `json:"created_at"`
-		ReadAt       *time.Time`json:"read_at,omitempty"`
+		ID           int        `json:"id"`
+		ChatID       int        `json:"chat_id"`
+		SenderUserID int        `json:"sender_user_id"`
+		Body         string     `json:"body"`
+		CreatedAt    time.Time  `json:"created_at"`
+		ReadAt       *time.Time `json:"read_at,omitempty"`
 	}
 
 	messages := make([]msgResp, 0)
@@ -218,10 +241,14 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	hasMore := (offset + len(messages)) < totalMessages
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"messages": messages,
-		"page":     1,
-		"has_more": false,
+		"page":     page,
+		"limit":    limit,
+		"total":    totalMessages,
+		"has_more": hasMore,
 	})
 }
 

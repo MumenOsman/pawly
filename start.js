@@ -4,18 +4,23 @@
  */
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const isWin = process.platform === 'win32';
 const npmCmd = isWin ? 'npm.cmd' : 'npm';
-const goCmd = isWin ? 'go.exe' : 'go';
 
 console.log('\x1b[36m%s\x1b[0m', '🐾 Starting Pawly Application (Backend :3000 + Frontend :5173)...\n');
 
-// 1. Launch Go Backend
-const backend = spawn(goCmd, ['run', 'cmd/api/main.go'], {
+// 1. Launch Go Backend (prefer prebuilt binary if exists for instant start, else go run)
+const binaryPath = path.join(__dirname, 'backend', isWin ? 'server.exe' : 'server');
+const hasBinary = fs.existsSync(binaryPath);
+const backendCmd = hasBinary ? binaryPath : (isWin ? 'go.exe' : 'go');
+const backendArgs = hasBinary ? [] : ['run', 'cmd/api/main.go'];
+
+const backend = spawn(backendCmd, backendArgs, {
   cwd: path.join(__dirname, 'backend'),
   stdio: 'pipe',
-  shell: isWin,
+  shell: !hasBinary && isWin,
 });
 
 backend.stdout.on('data', (data) => {
@@ -51,8 +56,8 @@ frontend.on('close', (code) => {
 
 function cleanup() {
   console.log('\n\x1b[33m%s\x1b[0m', '🛑 Shutting down Pawly servers...');
-  try { backend.kill(); } catch {}
-  try { frontend.kill(); } catch {}
+  try { backend.kill(); } catch { }
+  try { frontend.kill(); } catch { }
   process.exit();
 }
 

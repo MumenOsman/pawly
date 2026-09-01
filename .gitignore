@@ -23,3 +23,6 @@ backend/uploads/
 Thumbs.db
 .vscode/
 .idea/
+
+# Testing & Review Notes
+Test.md
