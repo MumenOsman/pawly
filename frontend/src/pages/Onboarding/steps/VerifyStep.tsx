@@ -1,20 +1,27 @@
-﻿import Button from '../../../components/Button/Button';
+import Button from '../../../components/Button/Button';
 import './VerifyStep.css';
 
 export default function VerifyStep({
-  profileData = {},
-  petData = {},
+  profileData = {} as any,
+  petData = {} as any,
   saving = false,
   saveError = '',
   onBack,
   onFinish,
+}: {
+  profileData?: any;
+  petData?: any;
+  saving?: boolean;
+  saveError?: string;
+  onBack?: () => void;
+  onFinish?: () => void;
 }) {
   const {
     ownerName,
     aboutMe,
     interests = [],
     photo,
-  } = profileData;
+  } = profileData || {};
 
   const {
     petName,
@@ -25,7 +32,7 @@ export default function VerifyStep({
     energyLevel,
     aboutMe: petAboutMe,
     photoUrl,
-  } = petData;
+  } = petData || {};
 
   return (
     <section className="verify-step">

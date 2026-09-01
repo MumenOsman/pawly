@@ -297,7 +297,7 @@ export default function TourStep() {
                         distanceKm={pet.distance_km}
                         onConnect={handleDemoConnect}
                         onRemove={(id) => {
-                          setDemoPets((prev) => prev.filter((p) => p.id !== id));
+                          setDemoPets((prev) => prev.filter((p) => String(p.id) !== String(id)));
                           setPawlySpeech(PAWLY_CONTEXT_MESSAGES.remove_click);
                         }}
                       />

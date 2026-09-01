@@ -82,7 +82,7 @@ const createClusterMarker = (count) => {
 };
 
 // Helsinki default center
-const DEFAULT_CENTER = [60.1699, 24.9384];
+const DEFAULT_CENTER: [number, number] = [60.1699, 24.9384];
 const DEFAULT_ZOOM = 12;
 
 function getInitialUserLocation() {
@@ -152,8 +152,9 @@ function FlyToPet({ selectedPet }) {
       if (lastSelectedIdRef.current !== selectedPet.id) {
         lastSelectedIdRef.current = selectedPet.id;
         const currentZoom = map.getZoom();
-        const targetZoom = Math.max(currentZoom, 15);
-        map.flyTo([selectedPet.latitude, selectedPet.longitude], targetZoom, {
+        const targetZoom = currentZoom < 15 ? 15 : currentZoom;
+        // Offset latitude slightly north (+0.007) so the map focus centers cleanly with the marker / popup
+        map.flyTo([selectedPet.latitude + 0.007, selectedPet.longitude], targetZoom, {
           duration: 0.8,
         });
       }
@@ -324,14 +325,23 @@ export default function Discover() {
   };
 
   const handleSelectPet = (petObj) => {
-    const targetPet = petObj.pet || petObj;
-    setSelectedPet(targetPet);
+    const basePet = petObj.pet || petObj;
+    // Combine pet attributes and hydrated card metadata (owner info, match score, distance)
+    const combined = {
+      ...basePet,
+      owner_name: petObj.owner_name || basePet.owner_name || 'Pet Owner',
+      owner_photo: petObj.owner_photo || basePet.owner_photo || '',
+      owner_bio: petObj.owner_bio || basePet.owner_bio || '',
+      match_percentage: petObj.match_percentage || basePet.match_percentage || 85,
+      distance_km: petObj.distance_km || basePet.distance_km || 2.5,
+    };
+    setSelectedPet(combined);
   };
 
   // Group pet cards by park/neighborhood location for map clustering
   const clusteredLocations = useMemo(() => {
-    const clusters = {};
-    cards.forEach((card) => {
+    const clusters: Record<string, { key: string; latitude: number; longitude: number; pets: any[] }> = {};
+    (cards as any[]).forEach((card) => {
       const pet = card.pet || card;
       if (!pet.latitude || !pet.longitude) return;
 
@@ -348,7 +358,16 @@ export default function Discover() {
           pets: [],
         };
       }
-      clusters[key].pets.push(pet);
+      // Attach all card-level metadata (owner info, match score, distance)
+      clusters[key].pets.push({
+        ...pet,
+        owner_name: card.owner_name || pet.owner_name || 'Pet Owner',
+        owner_photo: card.owner_photo || pet.owner_photo || '',
+        owner_bio: card.owner_bio || pet.owner_bio || '',
+        match_percentage: card.match_percentage || pet.match_percentage || 85,
+        distance_km: card.distance_km || pet.distance_km || 2.5,
+        cardRef: card,
+      });
     });
     return Object.values(clusters);
   }, [cards]);
@@ -375,8 +394,9 @@ export default function Discover() {
 
   // Render In-Place Pet Detail Panel matching Wireframe Row 6 & 7 Left
   const renderInPlacePetDetail = (pet) => {
-    const ownerName = pet.owner_name || 'Santa Dow';
-    const matchScore = pet.match_percentage || 92;
+    const ownerName = pet.owner_name || 'Pet Owner';
+    const matchScore = pet.match_percentage || 85;
+    const distanceText = pet.distance_km ? `${pet.distance_km} km away` : '< 5 km away';
 
     return (
       <div className="in-place-pet-detail">
@@ -395,7 +415,7 @@ export default function Discover() {
             src={getFullPhotoUrl(pet.pet_photo, getDefaultPetPhoto(pet.id, pet.animal_type, pet.pet_name))}
             alt={pet.pet_name}
             className="in-place-pet-detail__photo"
-            onError={(e) => {
+            onError={(e: any) => {
               e.target.onerror = null;
               e.target.src = getDefaultPetPhoto(pet.id, pet.animal_type, pet.pet_name);
             }}
@@ -411,8 +431,8 @@ export default function Discover() {
         {/* Details Line */}
         <div className="in-place-pet-detail__meta">
           <span>{pet.animal_type ? pet.animal_type.toUpperCase() : 'DOG'}</span>
-          <span>{pet.breed || 'French Bulldog'}</span>
-          <span>{pet.size ? pet.size.toUpperCase() : 'SMALL'}</span>
+          <span>{pet.breed || 'Companion'}</span>
+          <span>{pet.size ? pet.size.toUpperCase() : 'MEDIUM'}</span>
           {pet.pet_age && <span>{pet.pet_age} YEARS</span>}
         </div>
 
@@ -459,12 +479,12 @@ export default function Discover() {
 
           <p className="in-place-owner-bio">
             {pet.owner_bio ||
-              'Hey, this is Santa! I enjoy hikes, especially in winter. Surely I love my pets. Send me a message if we connected!'}
+              `Hello! I'm ${ownerName}, looking for friendly playmates and walking buddies for ${pet.pet_name}.`}
           </p>
 
           <div className="in-place-owner-badges">
-            <span className="in-place-badge">User since 2 years</span>
-            <span className="in-place-badge">&lt; 4 km away</span>
+            <span className="in-place-badge">Verified Owner</span>
+            <span className="in-place-badge">{distanceText}</span>
             <span className="in-place-badge">100% response rate</span>
           </div>
         </div>
@@ -535,7 +555,7 @@ export default function Discover() {
                     marker.openPopup();
                   }
                   if (isSingle) {
-                    setSelectedPet(mainPet);
+                    handleSelectPet(mainPet);
                   }
                 },
               }}

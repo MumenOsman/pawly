@@ -4,7 +4,21 @@
  * Reusable button with variants matching the design system.
  * Min touch target: 48px (Nordic glove-friendly).
  */
+import React from 'react';
 import './Button.css';
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children?: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'accent' | 'danger' | string;
+  size?: 'sm' | 'md' | 'lg' | string;
+  disabled?: boolean;
+  loading?: boolean;
+  fullWidth?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  onClick?: (e: any) => void;
+  className?: string;
+  id?: string;
+}
 
 export default function Button({
   children,
@@ -18,7 +32,7 @@ export default function Button({
   className = '',
   id,
   ...props
-}) {
+}: ButtonProps) {
   return (
     <button
       type={type}

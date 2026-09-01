@@ -10,6 +10,19 @@ import Button from '../Button/Button';
 import { getFullPhotoUrl, getDefaultPetPhoto } from '../../utils/petPhotos';
 import './PetCard.css';
 
+export interface PetCardProps {
+  pet: any;
+  matchPercentage?: number;
+  distanceKm?: number;
+  onConnect?: (petId: number) => void;
+  onRemove?: (petId: number) => void;
+  onDisconnect?: (petId: number) => void;
+  onSelect?: (pet: any) => void;
+  isConnected?: boolean;
+  showActions?: boolean;
+  compact?: boolean;
+}
+
 export default function PetCard({
   pet,
   matchPercentage,
@@ -21,7 +34,7 @@ export default function PetCard({
   isConnected = false,
   showActions = true,
   compact = false,
-}) {
+}: PetCardProps) {
   const fallbackPetPhoto = getDefaultPetPhoto(pet?.id, pet?.animal_type, pet?.pet_name);
   const photoUrl = getFullPhotoUrl(pet?.pet_photo, fallbackPetPhoto);
   const ownerPhotoUrl = getFullPhotoUrl(pet?.owner_photo, '/placeholder-user.svg');
@@ -62,7 +75,7 @@ export default function PetCard({
             alt={pet.pet_name}
             className="pet-card__photo"
             loading="lazy"
-            onError={(e) => {
+            onError={(e: any) => {
               e.target.onerror = null;
               e.target.src = fallbackPetPhoto;
             }}
@@ -78,7 +91,7 @@ export default function PetCard({
                 src={ownerPhotoUrl}
                 alt={pet.owner_name}
                 className="pet-card__owner-img"
-                onError={(e) => {
+                onError={(e: any) => {
                   e.target.onerror = null;
                   e.target.src = '/placeholder-user.svg';
                 }}

@@ -16,10 +16,10 @@ const INITIAL_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 const TYPING_TIMEOUT = 3000;
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 
-  (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/^http/, 'ws') : 'ws://localhost:3000');
+const WS_BASE_URL = (import.meta as any).env?.VITE_WS_URL || 
+  ((import.meta as any).env?.VITE_API_URL ? (import.meta as any).env.VITE_API_URL.replace(/^http/, 'ws') : 'ws://localhost:3000');
 
-export function WebSocketProvider({ children }) {
+export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);

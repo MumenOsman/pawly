@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
 
@@ -12,9 +13,7 @@ import Terms from './pages/Terms/Terms';
 
 // Pages — Person 3
 import Discover from './pages/Discover/Discover';
-import PetProfile from './pages/PetProfile/PetProfile';
 import Profile from './pages/Profile/Profile';
-import ChatList from './pages/ChatList/ChatList';
 import ChatView from './pages/ChatView/ChatView';
 import Settings from './pages/Settings/Settings';
 
@@ -23,7 +22,7 @@ import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import MatchNotification from './components/MatchNotification/MatchNotification';
 
-function App() {
+function App(): React.JSX.Element {
   return (
     <WebSocketProvider>
       <BrowserRouter>

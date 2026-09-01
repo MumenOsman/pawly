@@ -30,7 +30,7 @@ export const SMALL_PET_FALLBACK_PHOTOS = [
 /**
  * Returns a stable, distinct fallback photo URL based on pet ID, animal type, or name.
  */
-export function getDefaultPetPhoto(petId = 0, animalType = 'dog', petName = '') {
+export function getDefaultPetPhoto(petId: any = 0, animalType: string = 'dog', petName: string = '') {
   const type = (animalType || 'dog').toLowerCase();
   let pool = DOG_FALLBACK_PHOTOS;
   if (type === 'cat') {
@@ -50,7 +50,7 @@ export function getDefaultPetPhoto(petId = 0, animalType = 'dog', petName = '') 
 /**
  * Resolves full URL for backend uploaded photos (/uploads/...) or returns fallback.
  */
-export function getFullPhotoUrl(url, fallback = '') {
+export function getFullPhotoUrl(url?: string | null, fallback: string = '') {
   if (!url || url === '/paw-icon.svg' || url === '/placeholder-pet.svg' || url === '/placeholder-user.svg') {
     return fallback || url || '/placeholder-pet.svg';
   }

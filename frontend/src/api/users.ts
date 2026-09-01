@@ -68,9 +68,7 @@ export async function uploadUserPhoto(file) {
   const token = localStorage.getItem('pawly_token');
   const response = await fetch('http://localhost:3000/me/photo', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
 
@@ -80,6 +78,13 @@ export async function uploadUserPhoto(file) {
   }
 
   return response.json();
+}
+
+/** Delete / clear authenticated user's profile photo */
+export function deleteUserPhoto() {
+  return apiFetch('/me/photo', {
+    method: 'DELETE',
+  });
 }
 
 /**

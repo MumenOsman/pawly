@@ -29,7 +29,7 @@ const geoCache = new Map();
  * Live search for any city/location globally.
  * Returns array of { name, lat, lng }
  */
-export async function searchLocations(query) {
+export async function searchLocations(query?: string) {
   if (!query || typeof query !== 'string' || query.trim().length === 0) {
     return POPULAR_LOCATIONS;
   }
@@ -89,7 +89,7 @@ export async function searchLocations(query) {
     if (response.ok) {
       const data = await response.json();
       if (data && Array.isArray(data.features) && data.features.length > 0) {
-        const results = data.features.map((f) => {
+        const results = data.features.map((f: any) => {
           const props = f.properties || {};
           const city = props.city || props.name || props.county || '';
           const country = props.country || '';
@@ -120,7 +120,7 @@ export async function searchLocations(query) {
 /**
  * Dynamically resolves any location string (city, district, address) to { lat, lng }.
  */
-export async function geocodeLocation(locationName) {
+export async function geocodeLocation(locationName?: string) {
   if (!locationName || typeof locationName !== 'string') {
     return { lat: 60.1699, lng: 24.9384 };
   }
@@ -201,7 +201,7 @@ export async function geocodeLocation(locationName) {
 /**
  * Synchronous resolver for immediate rendering.
  */
-export function resolveLocationCoords(locationName) {
+export function resolveLocationCoords(locationName?: string) {
   if (!locationName) return { lat: 60.1699, lng: 24.9384 };
   const lowerQuery = locationName.trim().toLowerCase();
 
@@ -220,7 +220,7 @@ export function resolveLocationCoords(locationName) {
 /**
  * Reverse geocodes device GPS coordinates (lat, lng) to a friendly city/neighborhood name.
  */
-export async function reverseGeocode(lat, lng) {
+export async function reverseGeocode(lat: number, lng: number) {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
     const response = await fetch(url, {

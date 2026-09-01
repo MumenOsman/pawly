@@ -123,3 +123,11 @@ export async function uploadPetPhoto(petId, file) {
 
   return response.json();
 }
+
+/** Delete / remove a pet photo */
+export function deletePetPhoto(petId, photoUrl = '') {
+  const query = photoUrl ? `?photo_url=${encodeURIComponent(photoUrl)}` : '';
+  return apiFetch(`/pets/${petId}/photo${query}`, {
+    method: 'DELETE',
+  });
+}
