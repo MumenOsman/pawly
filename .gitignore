@@ -24,7 +24,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Testing & Review Notes
+# Testing & Deployment Notes
+DEPLOYMENT.md
+deployment.md
 Test.md
 Tests.md
 tests.md
+
