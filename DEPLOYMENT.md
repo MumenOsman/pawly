@@ -1,6 +1,12 @@
 # Pawly — Deployment & Containerization Guide
 
-This guide walks you through deploying Pawly using **Option 1 (100% Free Tier)** on Cloudflare Pages, free backend hosting, or running the entire containerized stack with **Docker**.
+This guide documents the deployed production architecture and local containerization.
+
+## 🚀 Live Production Deployments
+- **Frontend (Cloudflare Pages):** [https://pawly-web.pages.dev](https://pawly-web.pages.dev)
+- **Backend API (Render):** [https://pawly-backend-zhs1.onrender.com](https://pawly-backend-zhs1.onrender.com)
+- **Database (Neon PostgreSQL):** Frankfurt (`eu-central-1`) managed Postgres cluster
+- **API Health Check:** [https://pawly-backend-zhs1.onrender.com/health](https://pawly-backend-zhs1.onrender.com/health)
 
 ---
 
